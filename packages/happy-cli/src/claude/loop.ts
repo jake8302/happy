@@ -15,6 +15,22 @@ import type { PermissionMode } from "@/api/types"
 
 export type ClaudeEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
+/**
+ * Exhaustive membership record — `satisfies Record<ClaudeEffort, true>` keeps
+ * this in lockstep with the ClaudeEffort union without casting.
+ */
+const CLAUDE_EFFORTS = {
+    'low': true,
+    'medium': true,
+    'high': true,
+    'xhigh': true,
+    'max': true,
+} satisfies Record<ClaudeEffort, true>;
+
+export function isClaudeEffort(value: unknown): value is ClaudeEffort {
+    return typeof value === 'string' && Object.hasOwn(CLAUDE_EFFORTS, value);
+}
+
 export interface EnhancedMode {
     permissionMode: PermissionMode;
     model?: string;

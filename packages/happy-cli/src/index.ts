@@ -9,6 +9,7 @@
 
 import chalk from 'chalk'
 import { runClaude, StartOptions } from '@/claude/runClaude'
+import { isClaudeEffort } from '@/claude/loop'
 import { logger } from './ui/logger'
 import { readCredentials, readSettings } from './persistence'
 import { authAndSetupMachineIfNeeded } from './ui/auth'
@@ -610,7 +611,22 @@ ${chalk.bold('To clean up runaway processes:')} Use ${chalk.cyan('happy doctor c
         // Shortcut for --dangerously-skip-permissions
         unknownArgs.push('--dangerously-skip-permissions')
       } else if (arg === '--model') {
+        // Capture for remote sessions AND forward so a local (terminal)
+        // claude honors it too — previously it was swallowed here.
         options.model = args[++i]
+        if (options.model !== undefined) {
+          unknownArgs.push('--model', options.model)
+        }
+      } else if (arg === '--effort') {
+        // Same dual path as --model: seed the remote session default and
+        // forward to the local claude process.
+        const effort = args[++i]
+        if (!isClaudeEffort(effort)) {
+          console.error(chalk.red(`Invalid --effort value: ${effort}. Must be one of: low, medium, high, xhigh, max`))
+          process.exit(1)
+        }
+        options.effort = effort
+        unknownArgs.push('--effort', effort)
       } else if (arg === '--started-by') {
         options.startedBy = args[++i] as 'daemon' | 'terminal'
       } else if (arg === '--js-runtime') {

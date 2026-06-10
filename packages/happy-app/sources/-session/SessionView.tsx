@@ -438,19 +438,23 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
         resolveAgentDefaultConfig(agentDefaultOverrides, flavor)
     ), [agentDefaultOverrides, flavor]);
 
+    // Preference order: explicit pick for this session, then the state the
+    // CLI itself reports via metadata (so a session started locally shows
+    // its real model/mode here), then the app-side defaults — which are
+    // always concrete and would shadow the metadata if listed earlier.
     const permissionMode = React.useMemo<PermissionMode | null>(() => (
         resolveCurrentOption(availableModes, [
             session.permissionMode,
-            effectiveAgentDefaults.permissionMode,
             session.metadata?.currentOperatingModeCode,
+            effectiveAgentDefaults.permissionMode,
         ])
     ), [availableModes, session.permissionMode, effectiveAgentDefaults.permissionMode, session.metadata?.currentOperatingModeCode]);
 
     const modelMode = React.useMemo<ModelMode | null>(() => (
         resolveCurrentOption(availableModels, [
             session.modelMode,
-            effectiveAgentDefaults.modelMode,
             session.metadata?.currentModelCode,
+            effectiveAgentDefaults.modelMode,
         ])
     ), [availableModels, session.modelMode, effectiveAgentDefaults.modelMode, session.metadata?.currentModelCode]);
 
@@ -462,9 +466,10 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     const effortLevel = React.useMemo<EffortLevel | null>(() => (
         resolveCurrentOption(availableEffortLevels, [
             session.effortLevel,
+            session.metadata?.currentThoughtLevelCode,
             effectiveAgentDefaults.effortLevel,
         ])
-    ), [availableEffortLevels, session.effortLevel, effectiveAgentDefaults.effortLevel]);
+    ), [availableEffortLevels, session.effortLevel, effectiveAgentDefaults.effortLevel, session.metadata?.currentThoughtLevelCode]);
 
     const sessionStatus = useSessionStatus(session);
     const sessionUsage = useSessionUsage(sessionId);

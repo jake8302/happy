@@ -25,7 +25,7 @@ import { startOfflineReconnection, connectionState } from '@/utils/serverConnect
 import { claudeLocal } from '@/claude/claudeLocal';
 import { createSessionScanner } from '@/claude/utils/sessionScanner';
 import { Session } from './session';
-import { applySandboxPermissionPolicy, resolveInitialClaudePermissionMode, resolveRemoteClaudePermissionMode } from './utils/permissionMode';
+import { applySandboxPermissionPolicy, mapToClaudeMode, resolveInitialClaudePermissionMode, resolveRemoteClaudePermissionMode } from './utils/permissionMode';
 import { decodeBase64, encodeBase64 } from '@/api/encryption';
 import type { Session as ApiSession } from '@/api/types';
 import { getProjectPath } from './utils/path';
@@ -53,6 +53,27 @@ export interface StartOptions {
 const DEFAULT_CLAUDE_PERMISSION_MODE: PermissionMode = 'yolo';
 const DEFAULT_CLAUDE_MODEL = 'opus';
 const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'medium';
+
+type CurrentModeMetadata = Pick<Metadata, 'currentOperatingModeCode' | 'currentModelCode' | 'currentThoughtLevelCode'>;
+
+/**
+ * Session metadata snapshot of the CLI's current mode, so a remote app
+ * attaching to this session inherits what the terminal launched with
+ * instead of falling back to the app's own defaults. The permission mode
+ * goes through mapToClaudeMode because the CLI-internal default ('yolo')
+ * is not a key the app's Claude permission picker knows.
+ */
+function currentModeMetadata(
+    permissionMode: PermissionMode | undefined,
+    model: string | undefined,
+    effort: ClaudeEffort | undefined,
+): CurrentModeMetadata {
+    return {
+        currentOperatingModeCode: mapToClaudeMode(permissionMode ?? DEFAULT_CLAUDE_PERMISSION_MODE),
+        currentModelCode: model ?? DEFAULT_CLAUDE_MODEL,
+        currentThoughtLevelCode: effort ?? DEFAULT_CLAUDE_EFFORT,
+    };
+}
 
 export async function runClaude(credentials: Credentials, options: StartOptions = {}): Promise<void> {
     logger.debug(`[CLAUDE] ===== CLAUDE MODE STARTING =====`);
@@ -128,6 +149,7 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
         flavor: 'claude',
         sandbox: sandboxConfig?.enabled ? sandboxConfig : null,
         dangerouslySkipPermissions,
+        ...currentModeMetadata(initialPermissionMode, options.model, options.effort),
         ...(forkedFromSessionId ? { parentSessionId: forkedFromSessionId } : {}),
         ...(forkedFromMessageId ? { forkedFromMessageId } : {}),
     };
@@ -424,6 +446,23 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
     let currentDisallowedTools: string[] | undefined = undefined; // Track current disallowed tools
     let currentEffort: ClaudeEffort | undefined = options.effort ?? DEFAULT_CLAUDE_EFFORT; // Track current Claude effort (thinking depth)
 
+    // Mirror mode changes into session metadata so a remote app that
+    // attaches later sees the live state, not just the launch state.
+    // Initialized to what the initial session metadata already carries,
+    // so unchanged values never trigger a redundant metadata version bump.
+    let publishedModeMetadata = currentModeMetadata(initialPermissionMode, options.model, options.effort);
+    const publishCurrentModeMetadata = () => {
+        const next = currentModeMetadata(currentPermissionMode, currentModel, currentEffort);
+        if (next.currentOperatingModeCode === publishedModeMetadata.currentOperatingModeCode
+            && next.currentModelCode === publishedModeMetadata.currentModelCode
+            && next.currentThoughtLevelCode === publishedModeMetadata.currentThoughtLevelCode) {
+            return;
+        }
+        publishedModeMetadata = next;
+        session.updateMetadata((meta) => ({ ...meta, ...next }));
+        logger.debug(`[loop] Published mode metadata: ${next.currentOperatingModeCode}/${next.currentModelCode}/${next.currentThoughtLevelCode}`);
+    };
+
     const resetCurrentModeDefaults = () => {
         currentPermissionMode = initialPermissionMode;
         currentModel = options.model ?? DEFAULT_CLAUDE_MODEL;
@@ -433,6 +472,7 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
         currentAllowedTools = undefined;
         currentDisallowedTools = undefined;
         currentEffort = options.effort ?? DEFAULT_CLAUDE_EFFORT;
+        publishCurrentModeMetadata();
         logger.debug('[loop] Reset current mode defaults after abort');
     };
 
@@ -582,6 +622,8 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
         } else {
             logger.debug(`[loop] User message received with no effort override, using current: ${currentEffort ?? 'default'}`);
         }
+
+        publishCurrentModeMetadata();
 
         // Check for special commands before processing
         const specialCommand = parseSpecialCommand(message.content.text);

@@ -30,7 +30,7 @@ import { handleSandboxCommand } from './commands/sandbox'
 import { handleServerCommand } from './commands/server'
 import { spawnHappyCLI } from './utils/spawnHappyCLI'
 import { claudeCliPath } from './claude/claudeLocal'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { extractNoSandboxFlag } from './utils/sandboxFlags'
 import { handleResumeCommand } from '@/resume/handleResumeCommand'
 import { ensureDaemonRunning } from './daemon/ensureDaemonRunning'
@@ -583,6 +583,15 @@ ${chalk.bold('To clean up runaway processes:')} Use ${chalk.cyan('happy doctor c
       args.shift()
     }
 
+    // `claude setup-token` is an interactive auth utility, not a session —
+    // exec it directly with inherited stdio instead of wrapping it in a
+    // happy session (no happy auth, daemon, hooks, or system prompt).
+    // Reached via both `happy setup-token` and `happy claude setup-token`.
+    if (args[0] === 'setup-token') {
+      const result = spawnSync(claudeCliPath, args, { stdio: 'inherit', windowsHide: true })
+      process.exit(result.status ?? 1)
+    }
+
     // Parse command line arguments for main command
     const options: StartOptions = {}
     let showHelp = false
@@ -692,6 +701,8 @@ ${chalk.bold('happy')} - Claude Code On the Go
 ${chalk.bold('Usage:')}
   happy [options]         Start Claude with mobile control
   happy auth              Manage authentication
+  happy setup-token       Generate a long-lived Claude auth token
+                            (passthrough to claude setup-token)
   happy resume            Resume a previous Happy session by Happy session ID
   happy codex             Start Codex mode
   happy gemini            Start Gemini mode (ACP)

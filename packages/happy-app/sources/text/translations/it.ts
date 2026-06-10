@@ -415,6 +415,7 @@ export const it: TranslationStructure = {
         permissionMode: {
             title: 'MODALITÀ PERMESSI',
             default: 'Predefinito',
+            auto: 'Automatico',
             acceptEdits: 'Accetta modifiche',
             plan: 'Modalità piano',
             dontAsk: 'Non chiedere',

@@ -418,6 +418,7 @@ export const zhHans: TranslationStructure = {
         permissionMode: {
             title: '权限模式',
             default: '默认',
+            auto: '自动',
             acceptEdits: '接受编辑',
             plan: '计划模式',
             dontAsk: '不再询问',

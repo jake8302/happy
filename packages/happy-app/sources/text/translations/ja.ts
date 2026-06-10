@@ -418,6 +418,7 @@ export const ja: TranslationStructure = {
         permissionMode: {
             title: '権限モード',
             default: 'デフォルト',
+            auto: '自動',
             acceptEdits: '編集を許可',
             plan: 'プランモード',
             dontAsk: '確認しない',

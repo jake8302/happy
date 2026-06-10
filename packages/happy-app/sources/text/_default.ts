@@ -431,6 +431,7 @@ export const en = {
         permissionMode: {
             title: 'PERMISSION MODE',
             default: 'default permissions',
+            auto: 'auto',
             acceptEdits: 'accept edits',
             plan: 'plan',
             dontAsk: "don't ask",

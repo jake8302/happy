@@ -115,6 +115,7 @@ function getPermissionStyle(key: string): PermissionStyle | null {
             return { color: '#A78BFA', icon: 'play-forward' };
         case 'plan':
             return { color: '#5EABA4', icon: 'pause' };
+        case 'auto':
         case 'dontAsk':
         case 'safe-yolo':
             return { color: '#FBBF24', icon: 'play-forward' };

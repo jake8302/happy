@@ -5,7 +5,7 @@ import type { PermissionMode } from '@/api/types';
 export type ClaudeSdkPermissionMode = NonNullable<QueryOptions['permissionMode']>;
 
 /**
- * Map any PermissionMode (7 modes) to a Claude-compatible mode (4 modes)
+ * Map any PermissionMode (9 modes) to a Claude-compatible mode (6 modes)
  * This is the ONLY place where Codex modes are mapped to Claude equivalents.
  *
  * Mapping:
@@ -14,29 +14,44 @@ export type ClaudeSdkPermissionMode = NonNullable<QueryOptions['permissionMode']
  * - read-only → default (Claude doesn't support read-only)
  *
  * Claude modes pass through unchanged:
- * - default, acceptEdits, bypassPermissions, plan
+ * - default, acceptEdits, bypassPermissions, plan, dontAsk, auto
  */
 export function mapToClaudeMode(mode: PermissionMode): ClaudeSdkPermissionMode {
-    const codexToClaudeMap: Record<string, ClaudeSdkPermissionMode> = {
-        'yolo': 'bypassPermissions',
-        'safe-yolo': 'default',
-        'read-only': 'default',
-    };
-    return codexToClaudeMap[mode] ?? (mode as ClaudeSdkPermissionMode);
+    switch (mode) {
+        case 'yolo':
+            return 'bypassPermissions';
+        case 'safe-yolo':
+        case 'read-only':
+            return 'default';
+        case 'default':
+        case 'acceptEdits':
+        case 'bypassPermissions':
+        case 'plan':
+        case 'dontAsk':
+        case 'auto':
+            return mode;
+    }
 }
 
-const VALID_PERMISSION_MODES: readonly PermissionMode[] = [
-    'default',
-    'acceptEdits',
-    'bypassPermissions',
-    'plan',
-    'read-only',
-    'safe-yolo',
-    'yolo',
-] as const;
+/**
+ * Exhaustive membership record — `satisfies Record<PermissionMode, true>`
+ * makes the compiler reject both missing and extra keys, so this stays in
+ * lockstep with the PermissionMode union without any casting.
+ */
+const VALID_PERMISSION_MODES = {
+    'default': true,
+    'acceptEdits': true,
+    'bypassPermissions': true,
+    'plan': true,
+    'dontAsk': true,
+    'auto': true,
+    'read-only': true,
+    'safe-yolo': true,
+    'yolo': true,
+} satisfies Record<PermissionMode, true>;
 
 function isPermissionMode(value: string | undefined): value is PermissionMode {
-    return !!value && VALID_PERMISSION_MODES.includes(value as PermissionMode);
+    return !!value && Object.hasOwn(VALID_PERMISSION_MODES, value);
 }
 
 /**

@@ -21,6 +21,7 @@ import {
 } from '@/claude/utils/sessionProtocolMapper';
 import { InvalidateSync } from '@/utils/sync';
 import axios from 'axios';
+import type { ClaudeSdkPermissionMode } from '@/claude/utils/permissionMode'
 
 /**
  * ACP (Agent Communication Protocol) message data types.
@@ -602,7 +603,7 @@ export class ApiSessionClient extends EventEmitter {
     } | {
         type: 'message', message: string
     } | {
-        type: 'permission-mode-changed', mode: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan'
+        type: 'permission-mode-changed', mode: ClaudeSdkPermissionMode
     } | {
         type: 'ready'
     }, id?: string) {

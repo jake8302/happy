@@ -18,7 +18,7 @@ export type {
 export { AbortError } from '@anthropic-ai/claude-agent-sdk'
 
 // Alias for backward compatibility
-import type { CanUseTool } from '@anthropic-ai/claude-agent-sdk'
+import type { CanUseTool, PermissionMode as SdkPermissionMode } from '@anthropic-ai/claude-agent-sdk'
 export type CanCallToolCallback = CanUseTool
 
 /**
@@ -35,7 +35,8 @@ export interface QueryOptions {
     disallowedTools?: string[]
     maxTurns?: number
     mcpServers?: Record<string, unknown>
-    permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan'
+    /** Native Claude modes, straight from the SDK ('default' | 'acceptEdits' | 'bypassPermissions' | 'plan' | 'dontAsk' | 'auto') */
+    permissionMode?: SdkPermissionMode
     continue?: boolean
     resume?: string
     model?: string

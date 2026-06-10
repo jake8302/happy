@@ -417,6 +417,7 @@ export const zhHant: TranslationStructure = {
         permissionMode: {
             title: '權限模式',
             default: '預設',
+            auto: '自動',
             acceptEdits: '接受編輯',
             plan: '計畫模式',
             dontAsk: '不再詢問',

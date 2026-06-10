@@ -433,6 +433,7 @@ export const ru: TranslationStructure = {
         permissionMode: {
             title: 'РЕЖИМ РАЗРЕШЕНИЙ',
             default: 'По умолчанию',
+            auto: 'Авто',
             acceptEdits: 'Принимать правки',
             plan: 'Режим планирования',
             dontAsk: 'Не спрашивать',

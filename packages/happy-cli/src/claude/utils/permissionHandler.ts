@@ -10,12 +10,13 @@ import { PermissionResult } from "../sdk/types";
 import { Session } from "../session";
 import { EnhancedMode, PermissionMode } from "../loop";
 import { getToolDescriptor } from "./getToolDescriptor";
+import type { ClaudeSdkPermissionMode } from "./permissionMode";
 
 interface PermissionResponse {
     id: string;
     approved: boolean;
     reason?: string;
-    mode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+    mode?: ClaudeSdkPermissionMode;
     allowTools?: string[];
     updatedInput?: Record<string, unknown>;
     receivedAt?: number;

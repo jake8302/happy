@@ -417,6 +417,7 @@ export const ca: TranslationStructure = {
         permissionMode: {
             title: 'MODE DE PERMISOS',
             default: 'Per defecte',
+            auto: 'Automàtic',
             acceptEdits: 'Accepta edicions',
             plan: 'Mode de planificació',
             dontAsk: 'No preguntis',

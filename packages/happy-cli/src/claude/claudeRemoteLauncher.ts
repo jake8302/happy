@@ -17,11 +17,12 @@ import { getToolName } from "./utils/getToolName";
 import { getAskUserQuestionToolCallIds } from "./utils/questionNotification";
 import { cleanupStdinAfterInk } from "@/utils/terminalStdinCleanup";
 import type { MessageParam, ContentBlockParam } from '@anthropic-ai/sdk/resources';
+import type { ClaudeSdkPermissionMode } from "./utils/permissionMode";
 
 interface PermissionsField {
     date: number;
     result: 'approved' | 'denied';
-    mode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+    mode?: ClaudeSdkPermissionMode;
     allowedTools?: string[];
 }
 

@@ -433,6 +433,7 @@ export const pl: TranslationStructure = {
         permissionMode: {
             title: 'TRYB UPRAWNIEŃ',
             default: 'Domyślny',
+            auto: 'Automatyczny',
             acceptEdits: 'Akceptuj edycje',
             plan: 'Tryb planowania',
             dontAsk: 'Nie pytaj',

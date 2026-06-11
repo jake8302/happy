@@ -180,8 +180,8 @@ export const ja: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: '常にコンテキストサイズを表示',
-        alwaysShowContextSizeDescription: '上限に近づいていなくてもコンテキスト使用量を表示',
+        showStatusLine: 'ステータスラインを表示',
+        showStatusLineDescription: '入力欄にコンテキスト・レート制限・エフォートを表示(上限が近づくと自動表示)',
         avatarStyle: 'アバタースタイル',
         avatarStyleDescription: 'セッションアバターの外観を選択',
         avatarOptions: {

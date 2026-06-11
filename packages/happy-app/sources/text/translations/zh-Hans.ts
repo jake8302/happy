@@ -180,8 +180,8 @@ export const zhHans: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: '始终显示上下文大小',
-        alwaysShowContextSizeDescription: '即使未接近限制时也显示上下文使用情况',
+        showStatusLine: '显示状态栏',
+        showStatusLineDescription: '在聊天输入框显示上下文、速率限制和努力程度(接近上限时自动显示)',
         avatarStyle: '头像风格',
         avatarStyleDescription: '选择会话头像外观',
         avatarOptions: {

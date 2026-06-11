@@ -178,8 +178,8 @@ export const pt: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: 'Sempre mostrar tamanho do contexto',
-        alwaysShowContextSizeDescription: 'Exibir uso do contexto mesmo quando não estiver próximo do limite',
+        showStatusLine: 'Mostrar linha de status',
+        showStatusLineDescription: 'Mostra contexto, limites de uso e esforço na entrada do chat (aparece automaticamente perto dos limites)',
         avatarStyle: 'Estilo do avatar',
         avatarStyleDescription: 'Escolha a aparência do avatar da sessão',
         avatarOptions: {

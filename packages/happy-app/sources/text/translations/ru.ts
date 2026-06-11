@@ -165,8 +165,8 @@ export const ru: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: 'Всегда показывать размер контекста',
-        alwaysShowContextSizeDescription: 'Отображать использование контекста даже когда не близко к лимиту',
+        showStatusLine: 'Показывать строку статуса',
+        showStatusLineDescription: 'Показывать контекст, лимиты и уровень усилий в поле ввода (появляется автоматически при приближении к лимитам)',
         avatarStyle: 'Стиль аватара',
         avatarStyleDescription: 'Выберите внешний вид аватара сессии',
         avatarOptions: {

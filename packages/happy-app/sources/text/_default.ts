@@ -177,8 +177,8 @@ export const en = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: 'Always Show Context Size',
-        alwaysShowContextSizeDescription: 'Display context usage even when not near limit',
+        showStatusLine: 'Show Status Line',
+        showStatusLineDescription: 'Show context, rate limits, and effort in the chat input (auto-appears near limits)',
         avatarStyle: 'Avatar Style',
         avatarStyleDescription: 'Choose session avatar appearance',
         avatarOptions: {

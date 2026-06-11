@@ -179,8 +179,8 @@ export const ca: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: 'Mostra sempre la mida del context',
-        alwaysShowContextSizeDescription: 'Mostra l\'ús del context fins i tot quan no estigui prop del límit',
+        showStatusLine: 'Mostra la línia d\'estat',
+        showStatusLineDescription: 'Mostra context, límits d\'ús i esforç a l\'entrada del xat (apareix automàticament a prop dels límits)',
         avatarStyle: 'Estil d\'avatar',
         avatarStyleDescription: 'Tria l\'aparença de l\'avatar de la sessió',
         avatarOptions: {

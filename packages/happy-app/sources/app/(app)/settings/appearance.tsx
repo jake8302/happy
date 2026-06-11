@@ -184,8 +184,8 @@ export default function AppearanceSettingsScreen() {
                     onPress={() => setDiffStyle(diffStyle === 'unified' ? 'split' : 'unified')}
                 />
                 <Item
-                    title={t('settingsAppearance.alwaysShowContextSize')}
-                    subtitle={t('settingsAppearance.alwaysShowContextSizeDescription')}
+                    title={t('settingsAppearance.showStatusLine')}
+                    subtitle={t('settingsAppearance.showStatusLineDescription')}
                     icon={<Ionicons name="analytics-outline" size={29} color="#5856D6" />}
                     rightElement={
                         <Switch

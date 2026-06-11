@@ -76,7 +76,7 @@ interface AgentInputProps {
         cacheRead: number;
         contextSize: number;
     };
-    alwaysShowContextSize?: boolean;
+    showStatusLine?: boolean;
     onFileViewerPress?: () => void;
     agentType?: 'claude' | 'codex' | 'gemini' | 'openclaw';
     onAgentClick?: () => void;
@@ -627,23 +627,23 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     // auto-compact budget). Replaces the old "x% left" text.
     const contextStatus = React.useMemo(
         () => (props.usageData?.contextSize
-            ? getContextStatus(props.usageData.contextSize, MAX_CONTEXT_SIZE, props.alwaysShowContextSize ?? false)
+            ? getContextStatus(props.usageData.contextSize, MAX_CONTEXT_SIZE, props.showStatusLine ?? false)
             : null),
-        [props.usageData?.contextSize, props.alwaysShowContextSize]
+        [props.usageData?.contextSize, props.showStatusLine]
     );
 
-    // Plan rate-limit status rides session metadata. Shares the context-size
+    // Plan rate-limit status rides session metadata. Shares the status-line
     // toggle, and auto-appears when pace turns orange (see rateLimitStatus.ts).
     const rateLimitStatus = React.useMemo(
-        () => getRateLimitStatus(props.metadata?.rateLimits, props.alwaysShowContextSize ?? false),
-        [props.metadata?.rateLimits, props.alwaysShowContextSize]
+        () => getRateLimitStatus(props.metadata?.rateLimits, props.showStatusLine ?? false),
+        [props.metadata?.rateLimits, props.showStatusLine]
     );
 
     // Effort glyph (statusline scheme: glyph per level, tinted by model
-    // family). Shares the context-size toggle like the rate-limit segment.
+    // family). Shares the status-line toggle like the rate-limit segment.
     const effortStatus = React.useMemo(
-        () => (props.alwaysShowContextSize ? getEffortStatus(props.effortLevel?.key, props.modelMode?.key) : null),
-        [props.effortLevel?.key, props.modelMode?.key, props.alwaysShowContextSize]
+        () => (props.showStatusLine ? getEffortStatus(props.effortLevel?.key, props.modelMode?.key) : null),
+        [props.effortLevel?.key, props.modelMode?.key, props.showStatusLine]
     );
 
     const agentInputEnterToSend = useSetting('agentInputEnterToSend');

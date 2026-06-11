@@ -21,7 +21,7 @@ export const SettingsSchema = z.object({
     diffStyle: z.enum(['unified', 'split']).describe('Diff view style (split is web-only)'),
     analyticsOptOut: z.boolean().describe('Whether to opt out of anonymous analytics'),
     experiments: z.boolean().describe('Whether to enable experimental features'),
-    alwaysShowContextSize: z.boolean().describe('Always show context size in agent input'),
+    alwaysShowContextSize: z.boolean().describe('Show the status line (context, rate limits, effort) in the agent input. Key kept as alwaysShowContextSize for sync compatibility with older clients.'),
     agentInputEnterToSend: z.boolean().describe('Whether pressing Enter submits/sends in the agent input (web)'),
     avatarStyle: z.string().describe('Avatar display style'),
     showFlavorIcons: z.boolean().describe('Whether to show AI provider icons in avatars'),

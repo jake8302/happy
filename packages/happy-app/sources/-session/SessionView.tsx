@@ -474,7 +474,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
 
     const sessionStatus = useSessionStatus(session);
     const sessionUsage = useSessionUsage(sessionId);
-    const alwaysShowContextSize = useSetting('alwaysShowContextSize');
+    const showStatusLine = useSetting('alwaysShowContextSize');
     const experiments = useSetting('experiments');
     const expResumeSession = useSetting('expResumeSession');
     const { canResume, resumeSession, resumingSession } = useSessionQuickActions(session);
@@ -690,7 +690,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
             autocompletePrefixes={AGENT_INPUT_AUTOCOMPLETE_PREFIXES}
             autocompleteSuggestions={handleAutocompleteSuggestions}
             usageData={usageData}
-            alwaysShowContextSize={alwaysShowContextSize}
+            showStatusLine={showStatusLine}
             zenMode={zenMode}
         />
     );

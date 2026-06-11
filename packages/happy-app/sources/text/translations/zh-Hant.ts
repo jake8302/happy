@@ -179,8 +179,8 @@ export const zhHant: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: '始終顯示上下文大小',
-        alwaysShowContextSizeDescription: '即使未接近限制時也顯示上下文使用情況',
+        showStatusLine: '顯示狀態列',
+        showStatusLineDescription: '在聊天輸入框顯示上下文、速率限制和努力程度(接近上限時自動顯示)',
         avatarStyle: '頭像風格',
         avatarStyleDescription: '選擇工作階段頭像外觀',
         avatarOptions: {

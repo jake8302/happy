@@ -196,8 +196,8 @@ export const pl: TranslationStructure = {
             unified: 'Unified',
             split: 'Split',
         },
-        alwaysShowContextSize: 'Zawsze pokazuj rozmiar kontekstu',
-        alwaysShowContextSizeDescription: 'Wyświetlaj użycie kontekstu nawet gdy nie jest blisko limitu',
+        showStatusLine: 'Pokaż pasek stanu',
+        showStatusLineDescription: 'Pokazuj kontekst, limity i poziom wysiłku w polu wprowadzania (pojawia się automatycznie blisko limitów)',
         avatarStyle: 'Styl awatara',
         avatarStyleDescription: 'Wybierz wygląd awatara sesji',
         avatarOptions: {

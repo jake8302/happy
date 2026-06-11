@@ -54,7 +54,7 @@ describe('modelModeOptions', () => {
     });
 
     it('uses code defaults for agent defaults', () => {
-        expect(getDefaultPermissionModeKey('claude')).toBe('bypassPermissions');
+        expect(getDefaultPermissionModeKey('claude')).toBe('auto');
         expect(getDefaultModelKey('claude')).toBe('opus');
         expect(getDefaultEffortKey('claude')).toBe('medium');
         expect(getDefaultPermissionModeKey('codex')).toBe('yolo');

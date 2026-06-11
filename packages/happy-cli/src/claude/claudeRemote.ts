@@ -14,6 +14,7 @@ import { PermissionResult } from "./sdk/types";
 import type { JsRuntime } from "./runClaude";
 import type { RateLimitsSnapshot } from "@/api/types";
 import { mergeRateLimitEvent } from "./rateLimitEvents";
+import { probeRateLimits } from "./rateLimitProbe";
 
 export async function claudeRemote(opts: {
 
@@ -187,12 +188,25 @@ export async function claudeRemote(opts: {
         lastRateLimits = snapshot;
         opts.onRateLimits!(snapshot);
     };
+    // Setup-token sessions can't use get_usage (no user:profile scope), so when
+    // it yields no data we fall back to reading the unified rate-limit headers
+    // off a throwaway inference call on the session's own token — Claude Code's
+    // own quota_check pattern. Gated on CLAUDE_CODE_OAUTH_TOKEN: machine-login
+    // sessions authenticate from keychain creds, never set this env, and get
+    // their data from get_usage instead.
+    const probeRateLimitsViaHeaders = async () => {
+        const token = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+        if (!token) return;
+        const snapshot = await probeRateLimits({ token, baseUrl: process.env.ANTHROPIC_BASE_URL, signal: opts.signal });
+        if (snapshot) pushRateLimits(snapshot);
+    };
     const pollRateLimits = () => {
         if (!opts.onRateLimits || rateLimitPollInFlight) return;
         rateLimitPollInFlight = true;
         response.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET().then((usage) => {
             const limits = usage.rate_limits_available ? usage.rate_limits : null;
-            if (!limits) return;
+            // No profile-scoped data (setup token) — try the header probe instead.
+            if (!limits) return probeRateLimitsViaHeaders();
             // Right after spawn Claude may not have made an API call yet — both
             // utilizations come back null; skip the no-data snapshot.
             if (limits.five_hour?.utilization == null && limits.seven_day?.utilization == null) return;
@@ -201,8 +215,11 @@ export async function claudeRemote(opts: {
                 sevenDay: limits.seven_day ? { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } : null,
                 updatedAt: Date.now(),
             });
+            return;
         }).catch((e) => {
-            logger.debug('[claudeRemote] Rate-limit poll failed (API-key auth or older claude binary?)', e);
+            // get_usage rejected outright (setup token on some binaries) — same fallback.
+            logger.debug('[claudeRemote] Rate-limit poll failed; trying header probe (setup-token auth?)', e);
+            return probeRateLimitsViaHeaders();
         }).finally(() => {
             rateLimitPollInFlight = false;
         });

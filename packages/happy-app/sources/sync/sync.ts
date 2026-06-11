@@ -7,6 +7,7 @@ import { decodeBase64, encodeBase64 } from '@/encryption/base64';
 import { storage } from './storage';
 import { ApiEphemeralUpdateSchema, ApiMessage, ApiUpdateContainerSchema } from './apiTypes';
 import type { ApiEphemeralActivityUpdate } from './apiTypes';
+import { usageFromEphemeral } from './usageEphemeral';
 import { Session, Machine } from './storageTypes';
 import { InvalidateSync } from '@/utils/sync';
 import { ActivityUpdateAccumulator } from './reducer/activityUpdateAccumulator';
@@ -2682,6 +2683,19 @@ class Sync {
                     activeAt: updateData.activeAt
                 };
                 storage.getState().applyMachines([updatedMachine]);
+            }
+        }
+
+        // Live usage reports. Session-protocol CLIs no longer embed usage in
+        // chat messages — this ephemeral is the only path that feeds the
+        // context-size indicator, so dropping it leaves latestUsage empty.
+        if (updateData.type === 'usage') {
+            const session = storage.getState().sessions[updateData.id];
+            if (session) {
+                this.applySessions([{
+                    ...session,
+                    latestUsage: usageFromEphemeral(updateData)
+                }]);
             }
         }
 

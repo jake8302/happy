@@ -24,6 +24,7 @@ import { gitStatusSync } from '@/sync/gitStatusSync';
 import { sessionAbort } from '@/sync/ops';
 import { storage, useIsDataReady, useLocalSetting, useRealtimeStatus, useSessionMessages, useSessionUsage, useSetting } from '@/sync/storage';
 import { useSession } from '@/sync/storage';
+import { newerUsage } from '@/sync/usageEphemeral';
 import { Session } from '@/sync/storageTypes';
 import { sync } from '@/sync/sync';
 import { t } from '@/text';
@@ -558,7 +559,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     }), [sessionStatus.statusText, sessionStatus.statusColor, sessionStatus.statusDotColor, sessionStatus.isPulsing]);
 
     const usageData = React.useMemo(() => {
-        const source = sessionUsage ?? session.latestUsage;
+        const source = newerUsage(sessionUsage, session.latestUsage);
         if (!source) return undefined;
         return {
             inputTokens: source.inputTokens,

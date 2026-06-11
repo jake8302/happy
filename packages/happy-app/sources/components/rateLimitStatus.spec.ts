@@ -71,7 +71,7 @@ describe('getRateLimitStatus', () => {
 
     it('hides everything without a 5h datum — the 7d window never shows alone', () => {
         expect(getRateLimitStatus({ ...snapshot, fiveHour: null }, true, NOW)).toBeNull();
-        expect(getRateLimitStatus({ ...snapshot, fiveHour: { utilization: null, resetsAt: iso(HOUR) } }, true, NOW)).toBeNull();
+        expect(getRateLimitStatus({ ...snapshot, fiveHour: { utilization: null, resetsAt: null } }, true, NOW)).toBeNull();
     });
 
     it('hides a calm snapshot unless always-show is on', () => {
@@ -94,6 +94,43 @@ describe('getRateLimitStatus', () => {
         expect(getRateLimitStatus(stale5h, true, NOW)).toBeNull();
         const stale7d = { ...snapshot, sevenDay: { utilization: 80, resetsAt: iso(-10 * 60 * 1000) } };
         expect(getRateLimitStatus(stale7d, true, NOW)?.segments).toHaveLength(1);
+    });
+
+    it('renders a countdown-only segment for utilization-less token-session windows, coloured by status', () => {
+        const tokenSnapshot = {
+            fiveHour: { utilization: null, resetsAt: iso(2 * HOUR), status: 'allowed' as const },
+            sevenDay: null,
+            updatedAt: NOW,
+        };
+        const status = getRateLimitStatus(tokenSnapshot, true, NOW);
+        expect(status?.segments.map((s) => s.text)).toEqual(['~2h']);
+        expect(status?.segments[0].color).toBe('rgb(45, 150, 60)');
+
+        const warning = getRateLimitStatus({
+            ...tokenSnapshot,
+            fiveHour: { ...tokenSnapshot.fiveHour, status: 'allowed_warning' as const },
+        }, true, NOW);
+        expect(warning?.segments[0].color).toBe('rgb(193, 100, 40)');
+
+        const rejected = getRateLimitStatus({
+            ...tokenSnapshot,
+            fiveHour: { ...tokenSnapshot.fiveHour, status: 'rejected' as const },
+        }, true, NOW);
+        expect(rejected?.segments[0].color).toBe('rgb(222, 60, 52)');
+    });
+
+    it('auto-shows utilization-less windows on warning or rejection, hides calm ones', () => {
+        const calm = {
+            fiveHour: { utilization: null, resetsAt: iso(2 * HOUR), status: 'allowed' as const },
+            sevenDay: null,
+            updatedAt: NOW,
+        };
+        expect(getRateLimitStatus(calm, false, NOW)).toBeNull();
+        const warning = {
+            ...calm,
+            fiveHour: { ...calm.fiveHour, status: 'allowed_warning' as const },
+        };
+        expect(getRateLimitStatus(warning, false, NOW)).not.toBeNull();
     });
 
     it('handles missing snapshots', () => {

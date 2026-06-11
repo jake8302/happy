@@ -71,10 +71,12 @@ export const MetadataSchema = z.object({
         fiveHour: z.object({
             utilization: z.number().nullable(),
             resetsAt: z.string().nullable(),
+            status: z.string().nullish(),
         }).nullish(),
         sevenDay: z.object({
             utilization: z.number().nullable(),
             resetsAt: z.string().nullable(),
+            status: z.string().nullish(),
         }).nullish(),
         updatedAt: z.number(),
     }).nullish(),

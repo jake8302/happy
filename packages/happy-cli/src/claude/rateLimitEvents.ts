@@ -30,17 +30,19 @@ function toIso(resetsAt: number | undefined): string | null {
 
 /**
  * Returns an updated snapshot, or null when the event carries nothing usable
- * (overage claims, missing utilization, or no claim type to attribute it to).
+ * (overage claims, or no claim type to attribute it to). Utilization is
+ * optional — real-world setup-token events carry only status + reset — so the
+ * window keeps `status` for the app to colour by when the % is unknown.
  */
 export function mergeRateLimitEvent(
     prev: RateLimitsSnapshot | null,
     info: RateLimitEventInfo,
     now: number,
 ): RateLimitsSnapshot | null {
-    if (info.utilization == null || info.rateLimitType == null || info.rateLimitType === 'overage') {
+    if (info.rateLimitType == null || info.rateLimitType === 'overage') {
         return null;
     }
-    const window = { utilization: info.utilization, resetsAt: toIso(info.resetsAt) };
+    const window = { utilization: info.utilization ?? null, resetsAt: toIso(info.resetsAt), status: info.status };
     if (info.rateLimitType === 'five_hour') {
         return { fiveHour: window, sevenDay: prev?.sevenDay ?? null, updatedAt: now };
     }

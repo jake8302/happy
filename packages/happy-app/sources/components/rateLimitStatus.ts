@@ -15,7 +15,7 @@ import type { Metadata } from '@/sync/storageTypes';
 export type RateLimitSegment = { text: string; color: string };
 export type RateLimitStatus = { segments: RateLimitSegment[] };
 
-type RateLimitWindow = { utilization: number | null; resetsAt: string | null } | null | undefined;
+type RateLimitWindow = { utilization: number | null; resetsAt: string | null; status?: string | null } | null | undefined;
 
 const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -83,17 +83,36 @@ export function formatResetCountdown(remainingMs: number): string {
     return `${remainingM}m`;
 }
 
+// Setup-token sessions get header-derived status without a percentage —
+// colour the bare countdown by standing instead of pace.
+const STATUS_SEVERITY: Record<string, number> = {
+    allowed: 0,
+    allowed_warning: 150,
+    rejected: 200,
+};
+
 function windowSegment(w: RateLimitWindow, windowMs: number, nowMs: number): (RateLimitSegment & { severity: number }) | null {
-    if (!w || w.utilization == null) return null;
+    if (!w) return null;
     let remainingMs: number | null = null;
     if (w.resetsAt) {
         const resetMs = Date.parse(w.resetsAt);
         if (Number.isFinite(resetMs)) {
             // A reset in the past means the snapshot predates the window
-            // rolling over — the stored utilization is no longer true.
+            // rolling over — the stored data is no longer true.
             if (resetMs <= nowMs) return null;
             remainingMs = resetMs - nowMs;
         }
+    }
+    if (w.utilization == null) {
+        // No percentage (utilization-less rate_limit_event payloads): render
+        // the reset countdown alone, coloured by the event's status.
+        if (remainingMs === null) return null;
+        const severity = STATUS_SEVERITY[w.status ?? 'allowed'] ?? 0;
+        return {
+            text: formatResetCountdown(remainingMs),
+            color: gradientColor(severity),
+            severity,
+        };
     }
     const severity = paceSeverity(w.utilization, remainingMs, windowMs);
     const countdown = remainingMs !== null ? `(${formatResetCountdown(remainingMs)})` : '';

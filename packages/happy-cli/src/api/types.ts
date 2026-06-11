@@ -288,6 +288,12 @@ export type MessageContent = z.infer<typeof MessageContentSchema>
 export type RateLimitWindow = {
   utilization: number | null,
   resetsAt: string | null,
+  /**
+   * Header-derived standing from `rate_limit_event` stream messages. Present
+   * only on event-derived windows; setup-token sessions get status without
+   * utilization, so the app colours by status when the percentage is unknown.
+   */
+  status?: 'allowed' | 'allowed_warning' | 'rejected',
 }
 
 export type RateLimitsSnapshot = {

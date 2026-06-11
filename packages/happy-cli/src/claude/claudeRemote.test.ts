@@ -157,7 +157,7 @@ describe('claudeRemote', () => {
         });
 
         expect(onRateLimits).toHaveBeenCalledWith({
-            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString() },
+            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString(), status: 'allowed' },
             sevenDay: null,
             updatedAt: expect.any(Number),
         });

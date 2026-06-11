@@ -334,30 +334,18 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
             minHeight: 20,
         }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 }}>
-                {p.effortStatus && (
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            color: p.effortStatus.color ?? theme.colors.textSecondary,
-                            ...Typography.default()
-                        }}
-                        accessibilityLabel="effort level"
-                    >
-                        {p.effortStatus.glyph}
-                    </Text>
-                )}
                 {p.connectionStatus && (
                     <>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <StatusDot
                                 color={p.connectionStatus.dotColor}
                                 isPulsing={p.connectionStatus.isPulsing}
-                                size={6}
+                                size={p.connectionStatus.isPulsing ? 11 : 6}
                             />
                             <Text style={{
-                                fontSize: 11,
+                                fontSize: p.connectionStatus.isPulsing ? 12 : 11,
                                 color: p.connectionStatus.color,
-                                ...Typography.default()
+                                ...Typography.default(p.connectionStatus.isPulsing ? 'semiBold' : undefined)
                             }}>
                                 {p.connectionStatus.text}
                             </Text>
@@ -417,6 +405,18 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                             </>
                         )}
                     </>
+                )}
+                {p.effortStatus && (
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            color: p.effortStatus.color ?? theme.colors.textSecondary,
+                            ...Typography.default()
+                        }}
+                        accessibilityLabel="effort level"
+                    >
+                        {p.effortStatus.glyph}
+                    </Text>
                 )}
                 {p.contextStatus && (
                     <Text

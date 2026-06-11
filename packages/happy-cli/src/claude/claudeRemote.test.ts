@@ -105,4 +105,61 @@ describe('claudeRemote', () => {
             isCompactSummary: true,
         }));
     });
+
+    it('pushes rate-limit snapshots from rate_limit_event stream messages even when get_usage fails', async () => {
+        vi.mocked(query).mockReturnValue({
+            setPermissionMode: vi.fn(),
+            // Simulates setup-token auth: the profile-scoped usage request rejects
+            usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET: vi.fn().mockRejectedValue(new Error('missing profile scope')),
+            async *[Symbol.asyncIterator]() {
+                yield {
+                    type: 'rate_limit_event',
+                    rate_limit_info: {
+                        status: 'allowed',
+                        rateLimitType: 'five_hour',
+                        utilization: 42,
+                        resetsAt: 1_770_007_200,
+                    },
+                };
+                yield {
+                    type: 'result',
+                    subtype: 'success',
+                };
+            },
+        } as any);
+
+        const onRateLimits = vi.fn();
+        let messageCount = 0;
+
+        await claudeRemote({
+            sessionId: null,
+            path: process.cwd(),
+            allowedTools: [],
+            hookSettingsPath: '/tmp/happy-test-settings.json',
+            nextMessage: async () => {
+                messageCount += 1;
+                return messageCount === 1
+                    ? {
+                        message: 'hello',
+                        mode,
+                    }
+                    : null;
+            },
+            onReady: vi.fn(),
+            canCallTool: async () => ({ behavior: 'allow' }) as any,
+            isAborted: () => false,
+            onSessionFound: vi.fn(),
+            onThinkingChange: vi.fn(),
+            onMessage: vi.fn(),
+            onCompletionEvent: vi.fn(),
+            onSessionReset: vi.fn(),
+            onRateLimits,
+        });
+
+        expect(onRateLimits).toHaveBeenCalledWith({
+            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString() },
+            sevenDay: null,
+            updatedAt: expect.any(Number),
+        });
+    });
 });

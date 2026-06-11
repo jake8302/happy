@@ -13,6 +13,7 @@ import { systemPrompt } from "./utils/systemPrompt";
 import { PermissionResult } from "./sdk/types";
 import type { JsRuntime } from "./runClaude";
 import type { RateLimitsSnapshot } from "@/api/types";
+import { mergeRateLimitEvent } from "./rateLimitEvents";
 
 export async function claudeRemote(opts: {
 
@@ -181,6 +182,11 @@ export async function claudeRemote(opts: {
     // message loop never blocks; failures are expected on API-key auth and
     // pre-rate-limit claude binaries, so they only debug-log.
     let rateLimitPollInFlight = false;
+    let lastRateLimits: RateLimitsSnapshot | null = null;
+    const pushRateLimits = (snapshot: RateLimitsSnapshot) => {
+        lastRateLimits = snapshot;
+        opts.onRateLimits!(snapshot);
+    };
     const pollRateLimits = () => {
         if (!opts.onRateLimits || rateLimitPollInFlight) return;
         rateLimitPollInFlight = true;
@@ -190,7 +196,7 @@ export async function claudeRemote(opts: {
             // Right after spawn Claude may not have made an API call yet — both
             // utilizations come back null; skip the no-data snapshot.
             if (limits.five_hour?.utilization == null && limits.seven_day?.utilization == null) return;
-            opts.onRateLimits!({
+            pushRateLimits({
                 fiveHour: limits.five_hour ? { utilization: limits.five_hour.utilization, resetsAt: limits.five_hour.resets_at } : null,
                 sevenDay: limits.seven_day ? { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } : null,
                 updatedAt: Date.now(),
@@ -217,6 +223,16 @@ export async function claudeRemote(opts: {
                 ? { ...message, isCompactSummary: true } as SDKMessage
                 : message;
             opts.onMessage(outboundMessage);
+
+            // Header-derived rate-limit events work under any auth (including
+            // setup tokens, where the profile-scoped get_usage poll fails) but
+            // only carry the currently binding window — merge, don't replace.
+            if (message.type === 'rate_limit_event' && opts.onRateLimits) {
+                const merged = mergeRateLimitEvent(lastRateLimits, message.rate_limit_info, Date.now());
+                if (merged) {
+                    pushRateLimits(merged);
+                }
+            }
 
             // Handle special system messages
             if (message.type === 'system' && message.subtype === 'init') {

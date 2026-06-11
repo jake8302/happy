@@ -18,6 +18,7 @@ import { writeDaemonState, DaemonLocallyPersistedState, readDaemonState, acquire
 import type { PersistedSession } from '@/persistence';
 
 import { cleanupDaemonState, isDaemonRunningCurrentlyInstalledHappyVersion, stopDaemon } from './controlClient';
+import { buildAgentSpawnArgs, AgentCommand } from './agentSpawnArgs';
 import { startDaemonControlServer } from './controlServer';
 import { statSync } from 'fs';
 import { join } from 'path';
@@ -402,14 +403,9 @@ export async function startDaemon(): Promise<void> {
           // Construct command for the CLI
           const cliPath = join(projectPath(), 'dist', 'index.mjs');
           // Determine agent command - support claude, codex, and gemini
-          const agent = options.agent === 'gemini' ? 'gemini' : (options.agent === 'codex' ? 'codex' : (options.agent === 'openclaw' ? 'openclaw' : 'claude'));
-          const resumeId = agent === 'claude'
-            ? options.resumeClaudeSessionId
-            : (agent === 'codex' ? options.resumeCodexThreadId : undefined);
-          const resumeFragment = resumeId
-            ? ` --resume ${shellescape(resumeId)}`
-            : '';
-          const fullCommand = `node --no-warnings --no-deprecation ${cliPath} ${agent} --happy-starting-mode remote --started-by daemon${resumeFragment}`;
+          const agent: AgentCommand = options.agent === 'gemini' ? 'gemini' : (options.agent === 'codex' ? 'codex' : (options.agent === 'openclaw' ? 'openclaw' : 'claude'));
+          const agentArgs = buildAgentSpawnArgs(agent, options).map(shellescape).join(' ');
+          const fullCommand = `node --no-warnings --no-deprecation ${cliPath} ${agentArgs}`;
 
           // Spawn in tmux with environment variables
           // IMPORTANT: Pass complete environment (process.env + extraEnv) because:
@@ -492,7 +488,7 @@ export async function startDaemon(): Promise<void> {
           logger.debug(`[DAEMON RUN] Using regular process spawning`);
 
           // Construct arguments for the CLI - support claude, codex, and gemini
-          let agentCommand: string;
+          let agentCommand: AgentCommand;
           switch (options.agent) {
             case 'claude':
             case undefined:
@@ -513,20 +509,7 @@ export async function startDaemon(): Promise<void> {
                 errorMessage: `Unsupported agent type: '${options.agent}'. Please update your CLI to the latest version.`
               };
           }
-          const args = [
-            agentCommand,
-            '--happy-starting-mode', 'remote',
-            '--started-by', 'daemon'
-          ];
-
-          // Resume ids attach the new Happy session to a pre-existing provider
-          // conversation created by the fork / duplicate RPC.
-          if (options.resumeClaudeSessionId && agentCommand === 'claude') {
-            args.push('--resume', options.resumeClaudeSessionId);
-          }
-          if (options.resumeCodexThreadId && agentCommand === 'codex') {
-            args.push('--resume', options.resumeCodexThreadId);
-          }
+          const args = buildAgentSpawnArgs(agentCommand, options);
 
           // TODO: In future, sessionId could be used with --resume to continue existing sessions
           // For now, we ignore it - each spawn creates a new session

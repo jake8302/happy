@@ -140,6 +140,12 @@ export interface SpawnSessionOptions {
     parentSessionId?: string;
     /** Happy message id used as the rewind point (only set for "duplicate"). */
     forkedFromMessageId?: string;
+    /**
+     * Permission mode the app's new-session picker selected. Forwarded to
+     * the spawned CLI as `--permission-mode` so the session starts in the
+     * mode the user sees instead of the CLI's own default.
+     */
+    permissionMode?: string;
 }
 
 export type SpawnSessionResult =

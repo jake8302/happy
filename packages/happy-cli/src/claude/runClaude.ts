@@ -50,7 +50,11 @@ export interface StartOptions {
     jsRuntime?: JsRuntime
 }
 
-const DEFAULT_CLAUDE_PERMISSION_MODE: PermissionMode = 'yolo';
+// Sessions launched without an explicit mode (bare terminal, upstream app
+// builds, daemons that predate spawn-time --permission-mode) must not
+// silently bypass permissions; explicit bypass stays available via
+// --yolo / --dangerously-skip-permissions.
+const DEFAULT_CLAUDE_PERMISSION_MODE: PermissionMode = 'auto';
 const DEFAULT_CLAUDE_MODEL = 'opus';
 const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'medium';
 
@@ -60,8 +64,8 @@ type CurrentModeMetadata = Pick<Metadata, 'currentOperatingModeCode' | 'currentM
  * Session metadata snapshot of the CLI's current mode, so a remote app
  * attaching to this session inherits what the terminal launched with
  * instead of falling back to the app's own defaults. The permission mode
- * goes through mapToClaudeMode because the CLI-internal default ('yolo')
- * is not a key the app's Claude permission picker knows.
+ * goes through mapToClaudeMode because CLI-internal modes like 'yolo'
+ * (from --yolo) are not keys the app's Claude permission picker knows.
  */
 function currentModeMetadata(
     permissionMode: PermissionMode | undefined,

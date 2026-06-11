@@ -155,6 +155,12 @@ export interface SpawnSessionOptions {
     parentSessionId?: string;
     /** Happy message id used as the rewind point (only set for "duplicate"). */
     forkedFromMessageId?: string;
+    /**
+     * Permission mode from the new-session picker. The daemon forwards it
+     * as `--permission-mode` so the spawned CLI starts in the mode shown
+     * in the UI instead of the CLI's own default.
+     */
+    permissionMode?: string;
 }
 
 // Options for forking a Claude session on a machine
@@ -214,7 +220,7 @@ export interface ResumeSessionOptions {
  */
 export async function machineSpawnNewSession(options: SpawnSessionOptions): Promise<SpawnSessionResult> {
 
-    const { machineId, directory, approvedNewDirectoryCreation = false, token, agent, resumeClaudeSessionId, resumeCodexThreadId, parentSessionId, forkedFromMessageId } = options;
+    const { machineId, directory, approvedNewDirectoryCreation = false, token, agent, resumeClaudeSessionId, resumeCodexThreadId, parentSessionId, forkedFromMessageId, permissionMode } = options;
 
     try {
         const result = await apiSocket.machineRPC<SpawnSessionResult, {
@@ -227,10 +233,11 @@ export async function machineSpawnNewSession(options: SpawnSessionOptions): Prom
             resumeCodexThreadId?: string,
             parentSessionId?: string,
             forkedFromMessageId?: string,
+            permissionMode?: string,
         }>(
             machineId,
             'spawn-happy-session',
-            { type: 'spawn-in-directory', directory, approvedNewDirectoryCreation, token, agent, resumeClaudeSessionId, resumeCodexThreadId, parentSessionId, forkedFromMessageId }
+            { type: 'spawn-in-directory', directory, approvedNewDirectoryCreation, token, agent, resumeClaudeSessionId, resumeCodexThreadId, parentSessionId, forkedFromMessageId, permissionMode }
         );
         return result;
     } catch (error) {

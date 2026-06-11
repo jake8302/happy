@@ -976,6 +976,10 @@ function NewSessionScreen() {
                 approvedNewDirectoryCreation,
                 agent: selectedAgent,
                 token: selectedAccount?.token,
+                // Always send the picker's mode (not just overrides): the CLI
+                // process must actually start in the mode the picker shows,
+                // not in whatever default the installed CLI ships with.
+                permissionMode: currentPermission.key,
             });
 
             switch (result.type) {

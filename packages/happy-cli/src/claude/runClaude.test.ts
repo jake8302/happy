@@ -311,14 +311,14 @@ describe('runClaude mode metadata', () => {
             expect(api.getOrCreateSession).toHaveBeenCalled();
         });
 
-        // The CLI-internal default mode is 'yolo', which is not a key the
-        // app's Claude permission picker knows — it must publish as the
-        // SDK-mapped 'bypassPermissions' instead.
+        // The CLI default mode is 'auto' — sessions launched without an
+        // explicit mode (bare terminal, upstream app builds, old daemons)
+        // must not silently run with permissions bypassed.
         const { metadata } = api.getOrCreateSession.mock.calls[0][0];
         expect(metadata).toEqual(expect.objectContaining({
             currentModelCode: 'opus',
             currentThoughtLevelCode: 'medium',
-            currentOperatingModeCode: 'bypassPermissions',
+            currentOperatingModeCode: 'auto',
         }));
 
         await finishRun(runPromise, loopDeferred);

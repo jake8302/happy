@@ -55,5 +55,5 @@
             "sharp"
         ]
     },
-    "packageManager": "pnpm@10.11.0"
+    "packageManager": "pnpm@10.34.1"
 }

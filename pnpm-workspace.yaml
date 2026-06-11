@@ -6,3 +6,6 @@ packages:
   - "packages/happy-wire"
   - "packages/happy-app-logs"
   - "packages/codium"
+
+# Resolution-time age gate: new dep versions must be >=3 days old (hub enforces the same post-pull)
+minimumReleaseAge: 4320

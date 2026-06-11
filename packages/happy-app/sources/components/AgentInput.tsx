@@ -334,18 +334,68 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
             minHeight: 20,
         }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 }}>
+                {p.effortStatus && (
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            color: p.effortStatus.color ?? theme.colors.textSecondary,
+                            ...Typography.default()
+                        }}
+                        accessibilityLabel="effort level"
+                    >
+                        {p.effortStatus.glyph}
+                    </Text>
+                )}
+                {p.usedSetupToken && (
+                    <Ionicons
+                        name="key-outline"
+                        size={11}
+                        color={theme.colors.textSecondary}
+                        accessibilityLabel="setup token"
+                    />
+                )}
+                {p.contextStatus && (
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            color: p.contextStatus.color,
+                            ...Typography.default()
+                        }}
+                        accessibilityLabel={`context ${p.contextStatus.percentRemaining}% remaining`}
+                    >
+                        {p.contextStatus.glyph}
+                    </Text>
+                )}
+                {p.rateLimitStatus && (
+                    <Text
+                        numberOfLines={1}
+                        style={{
+                            fontSize: 11,
+                            color: theme.colors.textSecondary,
+                            flexShrink: 1,
+                            ...Typography.default()
+                        }}
+                    >
+                        {p.rateLimitStatus.segments.map((s, i) => (
+                            <React.Fragment key={i}>
+                                {i > 0 ? '/' : null}
+                                <Text style={{ color: s.color }}>{s.text}</Text>
+                            </React.Fragment>
+                        ))}
+                    </Text>
+                )}
                 {p.connectionStatus && (
                     <>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <StatusDot
                                 color={p.connectionStatus.dotColor}
                                 isPulsing={p.connectionStatus.isPulsing}
-                                size={p.connectionStatus.isPulsing ? 11 : 6}
+                                size={6}
                             />
                             <Text style={{
-                                fontSize: p.connectionStatus.isPulsing ? 12 : 11,
+                                fontSize: 11,
                                 color: p.connectionStatus.color,
-                                ...Typography.default(p.connectionStatus.isPulsing ? 'semiBold' : undefined)
+                                ...Typography.default()
                             }}>
                                 {p.connectionStatus.text}
                             </Text>
@@ -405,58 +455,6 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                             </>
                         )}
                     </>
-                )}
-                {p.effortStatus && (
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            color: p.effortStatus.color ?? theme.colors.textSecondary,
-                            ...Typography.default()
-                        }}
-                        accessibilityLabel="effort level"
-                    >
-                        {p.effortStatus.glyph}
-                    </Text>
-                )}
-                {p.contextStatus && (
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            color: p.contextStatus.color,
-                            ...Typography.default()
-                        }}
-                        accessibilityLabel={`context ${p.contextStatus.percentRemaining}% remaining`}
-                    >
-                        {p.contextStatus.glyph}
-                    </Text>
-                )}
-                {p.rateLimitStatus && (
-                    <Text
-                        numberOfLines={1}
-                        style={{
-                            fontSize: 11,
-                            color: theme.colors.textSecondary,
-                            marginLeft: p.connectionStatus ? 8 : 0,
-                            flexShrink: 1,
-                            ...Typography.default()
-                        }}
-                    >
-                        {p.connectionStatus ? '• ' : ''}
-                        {p.rateLimitStatus.segments.map((s, i) => (
-                            <React.Fragment key={i}>
-                                {i > 0 ? '/' : null}
-                                <Text style={{ color: s.color }}>{s.text}</Text>
-                            </React.Fragment>
-                        ))}
-                    </Text>
-                )}
-                {p.usedSetupToken && (
-                    <Ionicons
-                        name="key-outline"
-                        size={11}
-                        color={theme.colors.textSecondary}
-                        accessibilityLabel="setup token"
-                    />
                 )}
             </View>
             {showPermissionBadge && (() => {

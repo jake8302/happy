@@ -15,6 +15,7 @@ import { Shaker, ShakeInstance } from './Shaker';
 import { StatusDot } from './StatusDot';
 import { getRateLimitStatus, type RateLimitStatus } from './rateLimitStatus';
 import { getEffortStatus, type EffortStatus } from './effortStatus';
+import { getContextStatus, type ContextStatus } from './contextStatus';
 import { useActiveWord } from './autocomplete/useActiveWord';
 import { useActiveSuggestions } from './autocomplete/useActiveSuggestions';
 import { AgentInputAutocomplete } from './AgentInputAutocomplete';
@@ -234,12 +235,6 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
         fontSize: 11,
         ...Typography.default(),
     },
-    contextWarningText: {
-        fontSize: 11,
-        marginLeft: 8,
-        ...Typography.default(),
-    },
-
     // Button styles
     actionButtonsContainer: {
         flexDirection: 'row',
@@ -302,21 +297,6 @@ const stylesheet = StyleSheet.create((theme, runtime) => ({
     },
 }));
 
-const getContextWarning = (contextSize: number, alwaysShow: boolean = false, theme: Theme) => {
-    const percentageUsed = (contextSize / MAX_CONTEXT_SIZE) * 100;
-    const percentageRemaining = Math.max(0, Math.min(100, 100 - percentageUsed));
-
-    if (percentageRemaining <= 5) {
-        return { text: t('agentInput.context.remaining', { percent: Math.round(percentageRemaining) }), color: theme.colors.warningCritical };
-    } else if (percentageRemaining <= 10) {
-        return { text: t('agentInput.context.remaining', { percent: Math.round(percentageRemaining) }), color: theme.colors.warning };
-    } else if (alwaysShow) {
-        // Show context remaining in neutral color when not near limit
-        return { text: t('agentInput.context.remaining', { percent: Math.round(percentageRemaining) }), color: theme.colors.warning };
-    }
-    return null; // No display needed
-};
-
 // Stable sub-trees extracted from AgentInput so they don't reconcile when
 // the input's keystroke-derived state (hasText / inputState) flips. Their
 // props are derived from session metadata, not from the textarea content,
@@ -324,7 +304,7 @@ const getContextWarning = (contextSize: number, alwaysShow: boolean = false, the
 
 type StatusRowProps = {
     connectionStatus?: AgentInputProps['connectionStatus'];
-    contextWarning: { text: string; color: string } | null;
+    contextStatus: ContextStatus | null;
     rateLimitStatus: RateLimitStatus | null;
     effortStatus: EffortStatus | null;
     usedSetupToken: boolean;
@@ -341,7 +321,7 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
         && p.permissionModeKey !== 'default'
         && !p.zenMode
         && !!p.permissionLabel;
-    if (!p.connectionStatus && !p.contextWarning && !p.rateLimitStatus && !p.effortStatus && !p.usedSetupToken && !showPermissionBadge) {
+    if (!p.connectionStatus && !p.contextStatus && !p.rateLimitStatus && !p.effortStatus && !p.usedSetupToken && !showPermissionBadge) {
         return null;
     }
     return (
@@ -438,14 +418,16 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                         )}
                     </>
                 )}
-                {p.contextWarning && (
-                    <Text style={{
-                        fontSize: 11,
-                        color: p.contextWarning.color,
-                        marginLeft: p.connectionStatus ? 8 : 0,
-                        ...Typography.default()
-                    }}>
-                        {p.connectionStatus ? '• ' : ''}{p.contextWarning.text}
+                {p.contextStatus && (
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            color: p.contextStatus.color,
+                            ...Typography.default()
+                        }}
+                        accessibilityLabel={`context ${p.contextStatus.percentRemaining}% remaining`}
+                    >
+                        {p.contextStatus.glyph}
                     </Text>
                 )}
                 {p.rateLimitStatus && (
@@ -454,12 +436,12 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                         style={{
                             fontSize: 11,
                             color: theme.colors.textSecondary,
-                            marginLeft: (p.connectionStatus || p.contextWarning) ? 8 : 0,
+                            marginLeft: p.connectionStatus ? 8 : 0,
                             flexShrink: 1,
                             ...Typography.default()
                         }}
                     >
-                        {(p.connectionStatus || p.contextWarning) ? '• ' : ''}
+                        {p.connectionStatus ? '• ' : ''}
                         {p.rateLimitStatus.segments.map((s, i) => (
                             <React.Fragment key={i}>
                                 {i > 0 ? '/' : null}
@@ -641,10 +623,14 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
         return label;
     }, [isSandboxEnabled]);
 
-    // Calculate context warning
-    const contextWarning = props.usageData?.contextSize
-        ? getContextWarning(props.usageData.contextSize, props.alwaysShowContextSize ?? false, theme)
-        : null;
+    // Context pie (statusline scheme: fill + severity gradient toward the
+    // auto-compact budget). Replaces the old "x% left" text.
+    const contextStatus = React.useMemo(
+        () => (props.usageData?.contextSize
+            ? getContextStatus(props.usageData.contextSize, MAX_CONTEXT_SIZE, props.alwaysShowContextSize ?? false)
+            : null),
+        [props.usageData?.contextSize, props.alwaysShowContextSize]
+    );
 
     // Plan rate-limit status rides session metadata. Shares the context-size
     // toggle, and auto-appears when pace turns orange (see rateLimitStatus.ts).
@@ -1237,7 +1223,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
 
                 <AgentInputStatusRow
                     connectionStatus={props.connectionStatus}
-                    contextWarning={contextWarning}
+                    contextStatus={contextStatus}
                     rateLimitStatus={rateLimitStatus}
                     effortStatus={effortStatus}
                     usedSetupToken={props.metadata?.usedSetupToken === true}

@@ -13,7 +13,7 @@ import { systemPrompt } from "./utils/systemPrompt";
 import { PermissionResult } from "./sdk/types";
 import type { JsRuntime } from "./runClaude";
 import type { RateLimitsSnapshot } from "@/api/types";
-import { mergeRateLimitEvent } from "./rateLimitEvents";
+import { mergeRateLimitEvent, mergeRateLimitWindows } from "./rateLimitEvents";
 import { probeRateLimits } from "./rateLimitProbe";
 
 export async function claudeRemote(opts: {
@@ -198,7 +198,13 @@ export async function claudeRemote(opts: {
         const token = process.env.CLAUDE_CODE_OAUTH_TOKEN;
         if (!token) return;
         const snapshot = await probeRateLimits({ token, baseUrl: process.env.ANTHROPIC_BASE_URL, signal: opts.signal });
-        if (snapshot) pushRateLimits(snapshot);
+        if (snapshot) {
+            // Merge so probe data (no status) never erases event-carried status.
+            pushRateLimits(mergeRateLimitWindows(lastRateLimits, {
+                ...(snapshot.fiveHour ? { fiveHour: snapshot.fiveHour } : {}),
+                ...(snapshot.sevenDay ? { sevenDay: snapshot.sevenDay } : {}),
+            }, Date.now()));
+        }
     };
     const pollRateLimits = () => {
         if (!opts.onRateLimits || rateLimitPollInFlight) return;
@@ -210,11 +216,10 @@ export async function claudeRemote(opts: {
             // Right after spawn Claude may not have made an API call yet — both
             // utilizations come back null; skip the no-data snapshot.
             if (limits.five_hour?.utilization == null && limits.seven_day?.utilization == null) return;
-            pushRateLimits({
-                fiveHour: limits.five_hour ? { utilization: limits.five_hour.utilization, resetsAt: limits.five_hour.resets_at } : null,
-                sevenDay: limits.seven_day ? { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } : null,
-                updatedAt: Date.now(),
-            });
+            pushRateLimits(mergeRateLimitWindows(lastRateLimits, {
+                ...(limits.five_hour ? { fiveHour: { utilization: limits.five_hour.utilization, resetsAt: limits.five_hour.resets_at } } : {}),
+                ...(limits.seven_day ? { sevenDay: { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } } : {}),
+            }, Date.now()));
             return;
         }).catch((e) => {
             // get_usage rejected outright (setup token on some binaries) — same fallback.
@@ -255,6 +260,13 @@ export async function claudeRemote(opts: {
             if (message.type === 'system' && message.subtype === 'init') {
                 // Start thinking when session initializes
                 updateThinking(true);
+
+                // Seed rate-limit data as soon as the session is up — Claude
+                // Code's own startup quota_check pattern. Without this a long
+                // first turn leaves the app showing no percentages until the
+                // first result-time poll. Only on a cold start: /clear re-inits
+                // the session and on setup tokens each poll is a billed call.
+                if (lastRateLimits === null) pollRateLimits();
 
                 const systemInit = message as SDKSystemMessage;
 

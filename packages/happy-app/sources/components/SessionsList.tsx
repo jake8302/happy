@@ -141,12 +141,10 @@ const stylesheet = StyleSheet.create((theme) => ({
         flexDirection: 'row',
         alignItems: 'center',
     },
-    statusDotContainer: {
+    titleDotContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        height: 16,
-        marginTop: 2,
-        marginRight: 4,
+        marginRight: 6,
     },
     statusText: {
         fontSize: 12,
@@ -425,6 +423,9 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
             </View>
             <View style={styles.sessionContent}>
                 <View style={styles.sessionTitleRow}>
+                    <View style={styles.titleDotContainer}>
+                        <StatusDot color={status.dotColor} isPulsing={status.isPulsing} size={10} />
+                    </View>
                     <Text style={[
                         styles.sessionTitle,
                         status.isConnected ? styles.sessionTitleConnected : styles.sessionTitleDisconnected
@@ -446,9 +447,6 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
                 )}
 
                 <View style={styles.statusRow}>
-                    <View style={styles.statusDotContainer}>
-                        <StatusDot color={status.dotColor} isPulsing={status.isPulsing} />
-                    </View>
                     <Text style={[
                         styles.statusText,
                         { color: status.color }

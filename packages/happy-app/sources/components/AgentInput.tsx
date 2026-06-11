@@ -14,6 +14,7 @@ import { hapticsLight, hapticsError } from './haptics';
 import { Shaker, ShakeInstance } from './Shaker';
 import { StatusDot } from './StatusDot';
 import { getRateLimitStatus, type RateLimitStatus } from './rateLimitStatus';
+import { getEffortStatus, type EffortStatus } from './effortStatus';
 import { useActiveWord } from './autocomplete/useActiveWord';
 import { useActiveSuggestions } from './autocomplete/useActiveSuggestions';
 import { AgentInputAutocomplete } from './AgentInputAutocomplete';
@@ -325,6 +326,7 @@ type StatusRowProps = {
     connectionStatus?: AgentInputProps['connectionStatus'];
     contextWarning: { text: string; color: string } | null;
     rateLimitStatus: RateLimitStatus | null;
+    effortStatus: EffortStatus | null;
     usedSetupToken: boolean;
     displayPermissionMode: ReturnType<typeof hackMode> | null;
     permissionModeKey: string;
@@ -339,7 +341,7 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
         && p.permissionModeKey !== 'default'
         && !p.zenMode
         && !!p.permissionLabel;
-    if (!p.connectionStatus && !p.contextWarning && !p.rateLimitStatus && !p.usedSetupToken && !showPermissionBadge) {
+    if (!p.connectionStatus && !p.contextWarning && !p.rateLimitStatus && !p.effortStatus && !p.usedSetupToken && !showPermissionBadge) {
         return null;
     }
     return (
@@ -352,6 +354,18 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
             minHeight: 20,
         }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 }}>
+                {p.effortStatus && (
+                    <Text
+                        style={{
+                            fontSize: 11,
+                            color: p.effortStatus.color ?? theme.colors.textSecondary,
+                            ...Typography.default()
+                        }}
+                        accessibilityLabel="effort level"
+                    >
+                        {p.effortStatus.glyph}
+                    </Text>
+                )}
                 {p.connectionStatus && (
                     <>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -637,6 +651,13 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     const rateLimitStatus = React.useMemo(
         () => getRateLimitStatus(props.metadata?.rateLimits, props.alwaysShowContextSize ?? false),
         [props.metadata?.rateLimits, props.alwaysShowContextSize]
+    );
+
+    // Effort glyph (statusline scheme: glyph per level, tinted by model
+    // family). Shares the context-size toggle like the rate-limit segment.
+    const effortStatus = React.useMemo(
+        () => (props.alwaysShowContextSize ? getEffortStatus(props.effortLevel?.key, props.modelMode?.key) : null),
+        [props.effortLevel?.key, props.modelMode?.key, props.alwaysShowContextSize]
     );
 
     const agentInputEnterToSend = useSetting('agentInputEnterToSend');
@@ -1218,6 +1239,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                     connectionStatus={props.connectionStatus}
                     contextWarning={contextWarning}
                     rateLimitStatus={rateLimitStatus}
+                    effortStatus={effortStatus}
                     usedSetupToken={props.metadata?.usedSetupToken === true}
                     displayPermissionMode={displayPermissionMode}
                     permissionModeKey={permissionModeKey}

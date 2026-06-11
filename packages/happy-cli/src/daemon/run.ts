@@ -658,7 +658,7 @@ export async function startDaemon(): Promise<void> {
       }
     };
 
-    const resumeSession = async (happySessionId: string, options?: { model?: string; permissionMode?: string }): Promise<SpawnSessionResult> => {
+    const resumeSession = async (happySessionId: string, options?: { model?: string; permissionMode?: string; token?: string }): Promise<SpawnSessionResult> => {
       try {
         const tracked = findTrackedSessionById(happySessionId);
         if (!tracked) {
@@ -704,6 +704,8 @@ export async function startDaemon(): Promise<void> {
           cwd: launch.cwd,
           env: {
             ...process.env,
+            // Re-apply the stored account token the session was spawned with
+            ...(options?.token ? { CLAUDE_CODE_OAUTH_TOKEN: options.token } : {}),
             HAPPY_RECONNECT_SESSION_ID: happySessionId,
             HAPPY_RECONNECT_ENCRYPTION_KEY: encodeBase64(tracked.encryption.encryptionKey),
             HAPPY_RECONNECT_ENCRYPTION_VARIANT: tracked.encryption.encryptionVariant,

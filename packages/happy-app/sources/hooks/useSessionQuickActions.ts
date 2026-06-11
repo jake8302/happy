@@ -8,6 +8,7 @@ import { storage, useLocalSetting, useMachine, useSetting } from '@/sync/storage
 import { Machine, Session } from '@/sync/storageTypes';
 import { sync } from '@/sync/sync';
 import { resolveMessageModeMeta } from '@/sync/messageMeta';
+import { getSessionAccountToken } from '@/accounts/claudeAccounts';
 import { t } from '@/text';
 import { HappyError } from '@/utils/errors';
 import { copySessionMetadataToClipboard, copySessionMetadataAndLogsToClipboard } from '@/utils/copySessionMetadataToClipboard';
@@ -174,6 +175,7 @@ export function useSessionQuickActions(
             sessionId: session.id,
             model: modeMeta.model ?? undefined,
             permissionMode: modeMeta.permissionMode,
+            token: getSessionAccountToken(session.id) ?? undefined,
         });
 
         switch (result.type) {

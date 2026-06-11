@@ -11,11 +11,13 @@ import { randomUUID } from 'expo-crypto';
 import { create } from 'zustand';
 import {
     addClaudeAccount,
+    findClaudeAccount,
     parseClaudeAccounts,
     removeClaudeAccount,
     renameClaudeAccount,
     type ClaudeAccount,
 } from './claudeAccountsData';
+import { loadSessionAccountIds, saveSessionAccountIds } from '@/sync/persistence';
 
 const ACCOUNTS_KEY = 'claude_setup_tokens_v1';
 
@@ -82,3 +84,23 @@ export const useClaudeAccounts = create<ClaudeAccountsState>()((set, get) => ({
 readStoredAccounts().then((accounts) => {
     useClaudeAccounts.setState({ accounts, loaded: true });
 });
+
+/**
+ * Per-session record of which stored account a session was spawned with,
+ * so resume can re-apply the same token (resume reuses the session id).
+ */
+export function rememberSessionAccount(sessionId: string, accountId: string | null): void {
+    const ids = loadSessionAccountIds();
+    if (accountId) {
+        ids[sessionId] = accountId;
+    } else {
+        delete ids[sessionId];
+    }
+    saveSessionAccountIds(ids);
+}
+
+/** Token for the account a session was spawned with, or null for machine login (or a since-deleted account). */
+export function getSessionAccountToken(sessionId: string): string | null {
+    const accountId = loadSessionAccountIds()[sessionId] ?? null;
+    return findClaudeAccount(useClaudeAccounts.getState().accounts, accountId)?.token ?? null;
+}

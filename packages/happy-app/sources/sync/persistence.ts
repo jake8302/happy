@@ -231,6 +231,23 @@ export function saveSessionModelModes(modes: Record<string, string>) {
     mmkv.set('session-model-modes', JSON.stringify(modes));
 }
 
+export function loadSessionAccountIds(): Record<string, string> {
+    const ids = mmkv.getString('session-claude-accounts');
+    if (ids) {
+        try {
+            return JSON.parse(ids);
+        } catch (e) {
+            console.error('Failed to parse session account ids', e);
+            return {};
+        }
+    }
+    return {};
+}
+
+export function saveSessionAccountIds(ids: Record<string, string>) {
+    mmkv.set('session-claude-accounts', JSON.stringify(ids));
+}
+
 export function loadSessionEffortLevels(): Record<string, string> {
     const levels = mmkv.getString('session-effort-levels');
     if (levels) {

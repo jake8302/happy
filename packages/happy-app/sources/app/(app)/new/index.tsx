@@ -56,7 +56,7 @@ import {
     type EffortLevel,
 } from '@/components/modelModeOptions';
 import { isRunningOnMac } from '@/utils/platform';
-import { useClaudeAccounts } from '@/accounts/claudeAccounts';
+import { rememberSessionAccount, useClaudeAccounts } from '@/accounts/claudeAccounts';
 import { findClaudeAccount } from '@/accounts/claudeAccountsData';
 import { getNewSessionSidebarLayout } from '@/utils/newSessionSidebarLayout';
 import { getAgentPickerItems, getModePickerItems } from '@/utils/newSessionPickerItems';
@@ -981,6 +981,9 @@ function NewSessionScreen() {
             switch (result.type) {
                 case 'success':
                     await sync.refreshSessions();
+
+                    // Remember the account so resume can re-apply its token
+                    rememberSessionAccount(result.sessionId, selectedAccount?.id ?? null);
 
                     // Store only per-session overrides. Matching the effective
                     // default stays null so future code default changes apply.

@@ -300,9 +300,23 @@ export class ApiSessionClient extends EventEmitter {
                 timeout: 30000,
             },
         );
-        const downloadUrl = requestRes.data?.downloadUrl;
+        let downloadUrl = requestRes.data?.downloadUrl;
         if (typeof downloadUrl !== 'string') {
             throw new Error('request-download returned no downloadUrl');
+        }
+
+        // Local-mode URLs point back at this same server but carry the host
+        // the server believes is public (PUBLIC_URL / x-forwarded-host) —
+        // which the CLI's own box may not be able to reach (e.g. a tailscale
+        // serve hostname resolves to the box itself and bypasses serve), and
+        // which fails the serverUrl prefix check below so Bearer auth is
+        // never attached. Re-root them onto the serverUrl that demonstrably
+        // works (request-download just succeeded over it). The path shape is
+        // unique to local mode; S3 presigned URLs are left untouched.
+        const localModePath = `/v1/sessions/${this.sessionId}/attachments/`;
+        const parsedUrl = new URL(downloadUrl);
+        if (parsedUrl.pathname.startsWith(localModePath)) {
+            downloadUrl = `${configuration.serverUrl}${parsedUrl.pathname}`;
         }
 
         const isServerUrl = downloadUrl.startsWith(configuration.serverUrl);

@@ -24,6 +24,8 @@ export interface NewSessionDraft {
     modelMode: string;
     sessionType: NewSessionSessionType;
     worktreeKey: string | null;
+    /** Stored Claude account (setup token) id, null = machine's own login. */
+    accountId: string | null;
     updatedAt: number;
 }
 
@@ -154,6 +156,7 @@ export function loadNewSessionDraft(): NewSessionDraft | null {
         const modelMode: string = typeof parsed.modelMode === 'string' ? parsed.modelMode : 'default';
         const sessionType: NewSessionSessionType = parsed.sessionType === 'worktree' ? 'worktree' : 'simple';
         const worktreeKey = typeof parsed.worktreeKey === 'string' ? parsed.worktreeKey : null;
+        const accountId = typeof parsed.accountId === 'string' ? parsed.accountId : null;
         const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now();
 
         return {
@@ -165,6 +168,7 @@ export function loadNewSessionDraft(): NewSessionDraft | null {
             modelMode,
             sessionType,
             worktreeKey,
+            accountId,
             updatedAt,
         };
     } catch (e) {

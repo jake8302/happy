@@ -118,6 +118,12 @@ export default function RootLayout() {
                 }}
             />
             <Stack.Screen
+                name="settings/claude-accounts"
+                options={{
+                    headerTitle: 'Claude Accounts',
+                }}
+            />
+            <Stack.Screen
                 name="settings/features"
                 options={{
                     headerTitle: t('settings.features'),

@@ -389,6 +389,12 @@ export const SettingsView = React.memo(function SettingsView() {
                     onPress={() => router.push('/settings/agents' as any)}
                 />
                 <Item
+                    title="Claude Accounts"
+                    subtitle="Setup tokens for spawning under other accounts"
+                    icon={<Ionicons name="key-outline" size={29} color="#5856D6" />}
+                    onPress={() => router.push('/settings/claude-accounts' as any)}
+                />
+                <Item
                     title={t('settings.featuresTitle')}
                     subtitle={t('settings.featuresSubtitle')}
                     icon={<Ionicons name="flask-outline" size={29} color="#FF9500" />}

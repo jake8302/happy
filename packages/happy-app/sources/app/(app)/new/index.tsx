@@ -56,6 +56,8 @@ import {
     type EffortLevel,
 } from '@/components/modelModeOptions';
 import { isRunningOnMac } from '@/utils/platform';
+import { useClaudeAccounts } from '@/accounts/claudeAccounts';
+import { findClaudeAccount } from '@/accounts/claudeAccountsData';
 import { getNewSessionSidebarLayout } from '@/utils/newSessionSidebarLayout';
 import { getAgentPickerItems, getModePickerItems } from '@/utils/newSessionPickerItems';
 import { resolveAgentDefaultConfig } from '@/sync/agentDefaults';
@@ -78,7 +80,7 @@ const ALL_AGENTS: { key: AgentKey; label: string }[] = [
 
 type PickerItem = { key: string; label: string; subtitle?: string; dimmed?: boolean };
 
-type PickerType = 'machine' | 'path' | 'worktree' | 'agent' | 'model' | 'effort' | 'permission';
+type PickerType = 'machine' | 'path' | 'worktree' | 'agent' | 'model' | 'effort' | 'permission' | 'account';
 
 type PermissionStyle = { color: string; icon: 'play-forward' | 'pause' };
 
@@ -579,6 +581,8 @@ function NewSessionScreen() {
         setSessionType: s.setSessionType,
         worktreeKey: s.worktreeKey,
         setWorktreeKey: s.setWorktreeKey,
+        accountId: s.accountId,
+        setAccountId: s.setAccountId,
     })));
     const hasText = useNewSessionDraft((s) => s.input.trim().length > 0);
     const selectedAgent = draft.agentType;
@@ -713,6 +717,20 @@ function NewSessionScreen() {
         }
     }, [worktreeItems, worktreeKey]);
 
+    // Stored Claude accounts (named setup tokens) for the account picker
+    const claudeAccounts = useClaudeAccounts((s) => s.accounts);
+    const accountItems = React.useMemo<PickerItem[]>(
+        () => claudeAccounts.map((a) => ({ key: a.id, label: a.name })),
+        [claudeAccounts],
+    );
+
+    // Drop a stale selection if its account was deleted in settings
+    React.useEffect(() => {
+        if (draft.accountId && !findClaudeAccount(claudeAccounts, draft.accountId)) {
+            draft.setAccountId(null);
+        }
+    }, [claudeAccounts, draft.accountId, draft.setAccountId]);
+
     // Filter available agents based on CLI availability from machine metadata
     const availableAgents = React.useMemo(() => {
         const availability = selectedMachine?.metadata?.cliAvailability;
@@ -749,6 +767,8 @@ function NewSessionScreen() {
     ), [agentDefaultOverrides, selectedAgent]);
 
     const supportsWorktree = getSupportsWorktree(selectedAgent);
+    // Token only maps to CLAUDE_CODE_OAUTH_TOKEN on the daemon, so claude only
+    const showAccount = selectedAgent === 'claude' && accountItems.length > 0;
     const showModel = modelModes.length > 1;
     const showEffort = effortLevels.length > 0;
     const showPermission = permissionModes.length > 1;
@@ -816,6 +836,7 @@ function NewSessionScreen() {
     const pathName = trimPathInput(selectedPath)
         ? formatPathRelativeToHome(trimPathInput(selectedPath), selectedHomeDir)
         : '~';
+    const accountLabel = findClaudeAccount(claudeAccounts, draft.accountId)?.name ?? 'machine account';
     const worktreeLabel = worktreeKey === '__none__'
         ? 'no worktree'
         : worktreeKey === '__new__'
@@ -837,10 +858,14 @@ function NewSessionScreen() {
                 return { title: 'Effort', items: getModePickerItems(effortLevels), selectedKey: currentEffort?.key ?? null, searchPlaceholder: 'search efforts...' };
             case 'permission':
                 return { title: 'Permissions', items: getModePickerItems(permissionModes), selectedKey: currentPermission?.key ?? null, searchPlaceholder: 'search permissions...' };
+            case 'account':
+                return { title: 'Claude Account', fixedItems: ACCOUNT_FIXED_ITEMS, items: accountItems, selectedKey: draft.accountId ?? '__default__', searchPlaceholder: 'search accounts...' };
             default:
                 return null;
         }
     }, [
+        accountItems,
+        draft.accountId,
         activePicker,
         availableAgents,
         currentEffort?.key,
@@ -892,10 +917,14 @@ function NewSessionScreen() {
                 }
                 break;
             }
+            case 'account':
+                draft.setAccountId(key === '__default__' ? null : key);
+                break;
         }
         setActivePicker(null);
     }, [
         activePicker,
+        draft.setAccountId,
         availableAgents,
         draft.setModelMode,
         draft.setPermissionMode,
@@ -937,11 +966,16 @@ function NewSessionScreen() {
                 spawnDirectory = worktreeKey;
             }
 
+            const selectedAccount = selectedAgent === 'claude'
+                ? findClaudeAccount(useClaudeAccounts.getState().accounts, draft.accountId)
+                : null;
+
             const result = await machineSpawnNewSession({
                 machineId: selectedMachineId,
                 directory: spawnDirectory,
                 approvedNewDirectoryCreation,
                 agent: selectedAgent,
+                token: selectedAccount?.token,
             });
 
             switch (result.type) {
@@ -1002,7 +1036,7 @@ function NewSessionScreen() {
         } finally {
             setIsSpawning(false);
         }
-    }, [selectedMachineId, selectedMachine, selectedPath, selectedAgent, router, navigateToSession, currentPermission.key, currentModelKey, currentEffort?.key, effectiveAgentDefaults.permissionMode, effectiveAgentDefaults.modelMode, effectiveAgentDefaults.effortLevel, worktreeKey]);
+    }, [selectedMachineId, selectedMachine, selectedPath, selectedAgent, router, navigateToSession, currentPermission.key, currentModelKey, currentEffort?.key, effectiveAgentDefaults.permissionMode, effectiveAgentDefaults.modelMode, effectiveAgentDefaults.effortLevel, worktreeKey, draft.accountId]);
 
     const canSend = selectedMachineId && selectedMachine && isMachineOnline(selectedMachine) && !isSpawning;
     const sidebarLayout = getNewSessionSidebarLayout({
@@ -1205,6 +1239,22 @@ function NewSessionScreen() {
                                 </Pressable>
                             )}
                             {renderActivePickerPopover('permission')}
+
+                            {showAccount && (
+                                <>
+                                    <Pressable
+                                        style={(p) => [styles.configRow, p.pressed && styles.configRowPressed]}
+                                        onPress={() => togglePicker('account')}
+                                    >
+                                        <Ionicons name="key-outline" size={15} color={theme.colors.textSecondary} />
+                                        <Text style={[styles.configLabel, styles.configValueText]} numberOfLines={1}>
+                                            {accountLabel}
+                                        </Text>
+                                        <Ionicons name="chevron-down" size={13} color={theme.colors.textSecondary} />
+                                    </Pressable>
+                                    {renderActivePickerPopover('account')}
+                                </>
+                            )}
 
                             {supportsWorktree && (
                                 <>
@@ -1448,6 +1498,10 @@ function NewSessionScreen() {
 const WORKTREE_FIXED_ITEMS: PickerItem[] = [
     { key: '__none__', label: 'no worktree' },
     { key: '__new__', label: 'new worktree' },
+];
+
+const ACCOUNT_FIXED_ITEMS: PickerItem[] = [
+    { key: '__default__', label: 'machine account', subtitle: 'whatever the machine is logged into' },
 ];
 
 const styles = StyleSheet.create((theme) => ({

@@ -149,6 +149,10 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
         flavor: 'claude',
         sandbox: sandboxConfig?.enabled ? sandboxConfig : null,
         dangerouslySkipPermissions,
+        // Daemon token-account spawns inject CLAUDE_CODE_OAUTH_TOKEN into this
+        // process's env (daemon/run.ts), and the SDK env inherits it — so its
+        // presence here means the spawned Claude authenticates via setup token.
+        usedSetupToken: !!process.env.CLAUDE_CODE_OAUTH_TOKEN,
         ...currentModeMetadata(initialPermissionMode, options.model, options.effort),
         ...(forkedFromSessionId ? { parentSessionId: forkedFromSessionId } : {}),
         ...(forkedFromMessageId ? { forkedFromMessageId } : {}),

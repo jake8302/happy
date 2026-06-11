@@ -287,6 +287,9 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
         // actually changes (e.g., new session started or /clear command used).
         // See: https://github.com/anthropics/happy-cli/issues/143
         let previousSessionId: string | null = null;
+        // Skip metadata writes when a rate-limit poll returns the same numbers
+        // (updatedAt alone changing isn't worth a metadata version bump).
+        let lastRateLimitsKey: string | null = null;
         while (!exitReason) {
             logger.debug('[remote]: launch');
             messageBuffer.addMessage('═'.repeat(40), 'status');
@@ -400,6 +403,16 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
                             slashCommands: metadata.slashCommands,
                             mcpServers: metadata.mcpServers,
                             skills: metadata.skills,
+                        }));
+                    },
+                    onRateLimits: (rateLimits) => {
+                        const key = JSON.stringify([rateLimits.fiveHour, rateLimits.sevenDay]);
+                        if (key === lastRateLimitsKey) return;
+                        lastRateLimitsKey = key;
+                        logger.debug('[remote] Rate limits updated:', rateLimits);
+                        session.client.updateMetadata((currentMetadata) => ({
+                            ...currentMetadata,
+                            rateLimits,
                         }));
                     },
                     onQueryReady: (q) => {

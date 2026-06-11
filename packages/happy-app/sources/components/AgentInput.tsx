@@ -13,6 +13,7 @@ import { EffortLevel } from './modelModeOptions';
 import { hapticsLight, hapticsError } from './haptics';
 import { Shaker, ShakeInstance } from './Shaker';
 import { StatusDot } from './StatusDot';
+import { getRateLimitStatus, type RateLimitStatus } from './rateLimitStatus';
 import { useActiveWord } from './autocomplete/useActiveWord';
 import { useActiveSuggestions } from './autocomplete/useActiveSuggestions';
 import { AgentInputAutocomplete } from './AgentInputAutocomplete';
@@ -323,6 +324,8 @@ const getContextWarning = (contextSize: number, alwaysShow: boolean = false, the
 type StatusRowProps = {
     connectionStatus?: AgentInputProps['connectionStatus'];
     contextWarning: { text: string; color: string } | null;
+    rateLimitStatus: RateLimitStatus | null;
+    usedSetupToken: boolean;
     displayPermissionMode: ReturnType<typeof hackMode> | null;
     permissionModeKey: string;
     isSandboxedYoloMode: boolean;
@@ -336,7 +339,7 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
         && p.permissionModeKey !== 'default'
         && !p.zenMode
         && !!p.permissionLabel;
-    if (!p.connectionStatus && !p.contextWarning && !showPermissionBadge) {
+    if (!p.connectionStatus && !p.contextWarning && !p.rateLimitStatus && !p.usedSetupToken && !showPermissionBadge) {
         return null;
     }
     return (
@@ -430,6 +433,34 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                     }}>
                         {p.connectionStatus ? '• ' : ''}{p.contextWarning.text}
                     </Text>
+                )}
+                {p.rateLimitStatus && (
+                    <Text
+                        numberOfLines={1}
+                        style={{
+                            fontSize: 11,
+                            color: theme.colors.textSecondary,
+                            marginLeft: (p.connectionStatus || p.contextWarning) ? 8 : 0,
+                            flexShrink: 1,
+                            ...Typography.default()
+                        }}
+                    >
+                        {(p.connectionStatus || p.contextWarning) ? '• ' : ''}
+                        {p.rateLimitStatus.segments.map((s, i) => (
+                            <React.Fragment key={i}>
+                                {i > 0 ? '/' : null}
+                                <Text style={{ color: s.color }}>{s.text}</Text>
+                            </React.Fragment>
+                        ))}
+                    </Text>
+                )}
+                {p.usedSetupToken && (
+                    <Ionicons
+                        name="key-outline"
+                        size={11}
+                        color={theme.colors.textSecondary}
+                        accessibilityLabel="setup token"
+                    />
                 )}
             </View>
             {showPermissionBadge && (() => {
@@ -600,6 +631,13 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     const contextWarning = props.usageData?.contextSize
         ? getContextWarning(props.usageData.contextSize, props.alwaysShowContextSize ?? false, theme)
         : null;
+
+    // Plan rate-limit status rides session metadata. Shares the context-size
+    // toggle, and auto-appears when pace turns orange (see rateLimitStatus.ts).
+    const rateLimitStatus = React.useMemo(
+        () => getRateLimitStatus(props.metadata?.rateLimits, props.alwaysShowContextSize ?? false),
+        [props.metadata?.rateLimits, props.alwaysShowContextSize]
+    );
 
     const agentInputEnterToSend = useSetting('agentInputEnterToSend');
 
@@ -1179,6 +1217,8 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                 <AgentInputStatusRow
                     connectionStatus={props.connectionStatus}
                     contextWarning={contextWarning}
+                    rateLimitStatus={rateLimitStatus}
+                    usedSetupToken={props.metadata?.usedSetupToken === true}
                     displayPermissionMode={displayPermissionMode}
                     permissionModeKey={permissionModeKey}
                     isSandboxedYoloMode={isSandboxedYoloMode}

@@ -279,6 +279,23 @@ export const MessageContentSchema = z.union([UserMessageSchema, AgentMessageSche
 
 export type MessageContent = z.infer<typeof MessageContentSchema>
 
+/**
+ * Claude plan rate-limit snapshot, polled from the agent SDK's experimental
+ * get_usage control request at turn boundaries. `utilization` is raw used %
+ * (0-100); `resetsAt` is the ISO 8601 window-reset timestamp. Either window
+ * may be null when the account/binary doesn't expose it.
+ */
+export type RateLimitWindow = {
+  utilization: number | null,
+  resetsAt: string | null,
+}
+
+export type RateLimitsSnapshot = {
+  fiveHour?: RateLimitWindow | null,
+  sevenDay?: RateLimitWindow | null,
+  updatedAt: number,
+}
+
 export type Metadata = {
   /**
    * ACP session config option value (normalized for UI metadata consumers).
@@ -324,6 +341,10 @@ export type Metadata = {
   /** Lineage for sessions created via the fork / duplicate flow. */
   parentSessionId?: string
   forkedFromMessageId?: string
+  /** True when the session authenticated via a setup token (CLAUDE_CODE_OAUTH_TOKEN), not the machine login. */
+  usedSetupToken?: boolean
+  /** Latest plan rate-limit usage observed by this session (5h / 7d windows). */
+  rateLimits?: RateLimitsSnapshot | null
 };
 
 export type AgentState = {

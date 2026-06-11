@@ -12,6 +12,7 @@ import { awaitFileExist } from "@/modules/watcher/awaitFileExist";
 import { systemPrompt } from "./utils/systemPrompt";
 import { PermissionResult } from "./sdk/types";
 import type { JsRuntime } from "./runClaude";
+import type { RateLimitsSnapshot } from "@/api/types";
 
 export async function claudeRemote(opts: {
 
@@ -42,7 +43,9 @@ export async function claudeRemote(opts: {
     onMessage: (message: SDKMessage) => void,
     onCompletionEvent?: (message: string) => void,
     onSessionReset?: () => void,
-    onSDKMetadata?: (metadata: { tools?: string[]; slashCommands?: string[]; mcpServers?: { name: string; status: string }[]; skills?: string[] }) => void
+    onSDKMetadata?: (metadata: { tools?: string[]; slashCommands?: string[]; mcpServers?: { name: string; status: string }[]; skills?: string[] }) => void,
+    /** Called with the plan rate-limit snapshot polled at turn boundaries (subscription accounts only). */
+    onRateLimits?: (rateLimits: RateLimitsSnapshot) => void
 }) {
 
     // Check if session is valid
@@ -173,6 +176,32 @@ export async function claudeRemote(opts: {
         });
     }
 
+    // Poll plan rate limits (5h / 7d windows) over the SDK's experimental
+    // get_usage control request. Fire-and-forget at turn boundaries so the
+    // message loop never blocks; failures are expected on API-key auth and
+    // pre-rate-limit claude binaries, so they only debug-log.
+    let rateLimitPollInFlight = false;
+    const pollRateLimits = () => {
+        if (!opts.onRateLimits || rateLimitPollInFlight) return;
+        rateLimitPollInFlight = true;
+        response.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET().then((usage) => {
+            const limits = usage.rate_limits_available ? usage.rate_limits : null;
+            if (!limits) return;
+            // Right after spawn Claude may not have made an API call yet — both
+            // utilizations come back null; skip the no-data snapshot.
+            if (limits.five_hour?.utilization == null && limits.seven_day?.utilization == null) return;
+            opts.onRateLimits!({
+                fiveHour: limits.five_hour ? { utilization: limits.five_hour.utilization, resetsAt: limits.five_hour.resets_at } : null,
+                sevenDay: limits.seven_day ? { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } : null,
+                updatedAt: Date.now(),
+            });
+        }).catch((e) => {
+            logger.debug('[claudeRemote] Rate-limit poll failed (API-key auth or older claude binary?)', e);
+        }).finally(() => {
+            rateLimitPollInFlight = false;
+        });
+    };
+
     updateThinking(true);
     try {
         logger.debug(`[claudeRemote] Starting to iterate over response`);
@@ -234,6 +263,9 @@ export async function claudeRemote(opts: {
             if (message.type === 'result') {
                 updateThinking(false);
                 logger.debug('[claudeRemote] Result received');
+
+                // Refresh plan rate limits now that the turn's API traffic is done
+                pollRateLimits();
 
                 // Send completion messages
                 if (isCompactCommand) {

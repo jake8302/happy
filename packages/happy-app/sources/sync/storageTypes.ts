@@ -60,6 +60,24 @@ export const MetadataSchema = z.object({
      */
     parentSessionId: z.string().optional(),
     forkedFromMessageId: z.string().optional(),
+    /** True when the session authenticated via a setup token (CLAUDE_CODE_OAUTH_TOKEN), not the machine login. */
+    usedSetupToken: z.boolean().optional(),
+    /**
+     * Plan rate-limit snapshot polled by the CLI at turn boundaries.
+     * `utilization` is raw used % (0-100); `resetsAt` is the ISO 8601
+     * window-reset timestamp. Rides encrypted metadata — no server schema.
+     */
+    rateLimits: z.object({
+        fiveHour: z.object({
+            utilization: z.number().nullable(),
+            resetsAt: z.string().nullable(),
+        }).nullish(),
+        sevenDay: z.object({
+            utilization: z.number().nullable(),
+            resetsAt: z.string().nullable(),
+        }).nullish(),
+        updatedAt: z.number(),
+    }).nullish(),
 });
 
 export type Metadata = z.infer<typeof MetadataSchema>;

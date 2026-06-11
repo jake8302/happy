@@ -82,7 +82,7 @@ HAPPY_SERVER_URL=http://localhost:3005 happy daemon start
 ## happy-server
 
 ```bash
-pnpm --filter happy-server standalone:dev   # localhost:3005, embedded PGlite, no Docker
+pnpm --filter happy-server-self-host standalone:dev   # localhost:3005, embedded PGlite, no Docker
 ```
 
 App auto-reloads on source changes. Point the CLI or the Expo app at it with `HAPPY_SERVER_URL=http://localhost:3005` / `EXPO_PUBLIC_HAPPY_SERVER_URL=...`.

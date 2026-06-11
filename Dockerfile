@@ -29,14 +29,16 @@ COPY packages/happy-cli/tools packages/happy-cli/tools
 
 RUN SKIP_HAPPY_WIRE_BUILD=1 pnpm install --frozen-lockfile
 
-# Stage 2: copy source and type-check
+# Stage 2: copy source and build the wire package
 FROM deps AS builder
 
 COPY packages/happy-wire ./packages/happy-wire
 COPY packages/happy-server ./packages/happy-server
 
 RUN pnpm --filter @slopus/happy-wire build
-RUN pnpm --filter happy-server build
+# No server build step: the standalone CMD runs sources via tsx. The package's
+# `build` script bundles the npm artifact with bun (absent here), and
+# `typecheck` imports happy-app sources this image doesn't copy.
 
 # Stage 3: runtime
 FROM node:20-slim AS runner

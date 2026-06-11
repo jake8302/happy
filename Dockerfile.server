@@ -33,7 +33,9 @@ COPY packages/happy-wire ./packages/happy-wire
 COPY packages/happy-server ./packages/happy-server
 
 RUN pnpm --filter @slopus/happy-wire build
-RUN pnpm --filter happy-server build
+# No server build step: the runtime runs sources via tsx. The package's
+# `build` script bundles the npm standalone artifact with bun (absent here),
+# and `typecheck` imports happy-app sources this image doesn't copy.
 
 # Stage 3: runtime
 FROM node:20 AS runner
@@ -57,4 +59,4 @@ EXPOSE 3000
 
 # Command to run the application
 COPY --from=builder /repo/package.json /repo/pnpm-workspace.yaml /repo/
-CMD ["pnpm", "--filter", "happy-server", "start"]
+CMD ["pnpm", "--filter", "happy-server-self-host", "start"]

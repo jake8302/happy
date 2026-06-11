@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     getAvailableModels,
     getAvailablePermissionModes,
+    getClaudeModelModes,
     getCodexModelModes,
     getClaudePermissionModes,
     getDefaultEffortKey,
@@ -28,6 +29,12 @@ describe('modelModeOptions', () => {
         const modes = getClaudePermissionModes(translate);
         expect(modes.map((mode) => mode.key)).toEqual(['default', 'auto', 'plan', 'dontAsk', 'acceptEdits', 'bypassPermissions']);
         expect(modes[0].name).toBe('tr:agentInput.permissionMode.default');
+    });
+
+    it('builds claude model fallbacks including fable 5', () => {
+        const models = getClaudeModelModes();
+        expect(models.map((model) => model.key)).toEqual(['default', 'fable', 'opus', 'sonnet', 'haiku']);
+        expect(models[1].name).toBe('fable 5');
     });
 
     it('builds codex model fallbacks', () => {

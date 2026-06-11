@@ -368,4 +368,38 @@ describe('runClaude mode metadata', () => {
 
         await finishRun(runPromise, loopDeferred);
     });
+
+    it('keeps user picks across abort instead of resetting to launch defaults', async () => {
+        const { sessionClient, loopDeferred, runPromise } = startRun({
+            startingMode: 'local',
+            shouldStartDaemon: false,
+        });
+
+        await vi.waitFor(() => {
+            expect(sessionClient.onUserMessage).toHaveBeenCalled();
+            expect(mockLoop).toHaveBeenCalled();
+        });
+        const handleUserMessage = sessionClient.onUserMessage.mock.calls[0][0];
+
+        await handleUserMessage({
+            content: { type: 'text', text: 'hello' },
+            meta: { permissionMode: 'acceptEdits', model: 'fable', effort: 'xhigh' },
+        });
+        expect(sessionClient.updateMetadata).toHaveBeenCalledTimes(1);
+
+        mockLoop.mock.calls[0][0].onAbort();
+
+        // No reset republish: the picked mode trio survives the abort, so
+        // the change-gated publisher has nothing new to say.
+        expect(sessionClient.updateMetadata).toHaveBeenCalledTimes(1);
+
+        // And a follow-up message without overrides still runs on the picks.
+        await handleUserMessage({
+            content: { type: 'text', text: 'continue' },
+            meta: {},
+        });
+        expect(sessionClient.updateMetadata).toHaveBeenCalledTimes(1);
+
+        await finishRun(runPromise, loopDeferred);
+    });
 });

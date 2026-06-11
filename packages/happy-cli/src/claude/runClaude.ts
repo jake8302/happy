@@ -463,17 +463,17 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
         logger.debug(`[loop] Published mode metadata: ${next.currentOperatingModeCode}/${next.currentModelCode}/${next.currentThoughtLevelCode}`);
     };
 
-    const resetCurrentModeDefaults = () => {
-        currentPermissionMode = initialPermissionMode;
-        currentModel = options.model ?? DEFAULT_CLAUDE_MODEL;
+    // Fork divergence: upstream also snapped the user-visible mode trio
+    // (permission mode / model / effort) back to launch values here, which
+    // silently reverted in-app picks to opus/yolo on every abort. We keep
+    // the trio — picks survive abort — and only clear run-scoped overrides.
+    const resetRunScopedOverrides = () => {
         currentFallbackModel = undefined;
         currentCustomSystemPrompt = undefined;
         currentAppendSystemPrompt = undefined;
         currentAllowedTools = undefined;
         currentDisallowedTools = undefined;
-        currentEffort = options.effort ?? DEFAULT_CLAUDE_EFFORT;
-        publishCurrentModeMetadata();
-        logger.debug('[loop] Reset current mode defaults after abort');
+        logger.debug('[loop] Reset run-scoped overrides after abort (mode picks kept)');
     };
 
     // Exit when session is archived from web/mobile
@@ -840,7 +840,7 @@ export async function runClaude(credentials: Credentials, options: StartOptions 
             // Store reference for hook server callback
             currentSession = sessionInstance;
         },
-        onAbort: resetCurrentModeDefaults,
+        onAbort: resetRunScopedOverrides,
         mcpServers: {
             'happy': {
                 type: 'http' as const,

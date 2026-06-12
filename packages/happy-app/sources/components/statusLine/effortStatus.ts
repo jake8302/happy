@@ -1,18 +1,15 @@
 /**
- * Effort glyph for the AgentInput status row, ported from the Mac
- * statusline's scheme: one glyph per effort level, tinted by model family
- * (fable pink, opus rust, sonnet purple, haiku teal). Unknown families get a
- * null colour so the caller can fall back to the theme's secondary text —
- * a hardcoded grey here would fight one of the two app themes.
+ * Effort indicator for the AgentInput status row, ported from the Mac
+ * statusline's scheme: one shape per effort level (drawn by EffortGlyph as
+ * fixed-size SVG — the unicode glyphs ◈◆●◐○ render at different sizes per
+ * character), tinted by model family (fable pink, opus rust, sonnet purple,
+ * haiku teal). Unknown families get a null colour so the caller can fall back
+ * to the theme's secondary text — a hardcoded grey here would fight one of
+ * the two app themes.
  */
 
-export const EFFORT_GLYPHS: Record<string, string> = {
-    max: '◈',
-    xhigh: '◆',
-    high: '●',
-    medium: '◐',
-    low: '○',
-};
+export const EFFORT_LEVELS = ['max', 'xhigh', 'high', 'medium', 'low'] as const;
+export type EffortLevel = (typeof EFFORT_LEVELS)[number];
 
 export const MODEL_FAMILY_COLORS: Record<string, string> = {
     fable: '#C75F8D',
@@ -21,7 +18,11 @@ export const MODEL_FAMILY_COLORS: Record<string, string> = {
     haiku: '#369298',
 };
 
-export type EffortStatus = { glyph: string; color: string | null };
+export type EffortStatus = { level: EffortLevel; color: string | null };
+
+function isEffortLevel(key: string): key is EffortLevel {
+    return (EFFORT_LEVELS as readonly string[]).includes(key);
+}
 
 /**
  * modelKey accepts both picker keys ('opus') and full model ids from CLI
@@ -33,7 +34,7 @@ export function getEffortStatus(
     modelKey: string | null | undefined,
 ): EffortStatus | null {
     if (!effortKey) return null;
-    const glyph = EFFORT_GLYPHS[effortKey] ?? '◈';
+    const level: EffortLevel = isEffortLevel(effortKey) ? effortKey : 'max';
     let color: string | null = null;
     if (modelKey) {
         for (const [family, familyColor] of Object.entries(MODEL_FAMILY_COLORS)) {
@@ -43,5 +44,5 @@ export function getEffortStatus(
             }
         }
     }
-    return { glyph, color };
+    return { level, color };
 }

@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { getEffortStatus, EFFORT_GLYPHS, MODEL_FAMILY_COLORS } from './effortStatus';
+import { getEffortStatus, EFFORT_LEVELS, MODEL_FAMILY_COLORS } from './effortStatus';
 
 describe('getEffortStatus', () => {
-    it('maps each effort level to its statusline glyph', () => {
-        expect(getEffortStatus('max', 'opus')?.glyph).toBe('◈');
-        expect(getEffortStatus('xhigh', 'opus')?.glyph).toBe('◆');
-        expect(getEffortStatus('high', 'opus')?.glyph).toBe('●');
-        expect(getEffortStatus('medium', 'opus')?.glyph).toBe('◐');
-        expect(getEffortStatus('low', 'opus')?.glyph).toBe('○');
+    it('passes each known effort level through for the SVG glyph to shape', () => {
+        expect(getEffortStatus('max', 'opus')?.level).toBe('max');
+        expect(getEffortStatus('xhigh', 'opus')?.level).toBe('xhigh');
+        expect(getEffortStatus('high', 'opus')?.level).toBe('high');
+        expect(getEffortStatus('medium', 'opus')?.level).toBe('medium');
+        expect(getEffortStatus('low', 'opus')?.level).toBe('low');
     });
 
-    it('falls back to the max glyph for an unknown effort key', () => {
-        expect(getEffortStatus('turbo', 'opus')?.glyph).toBe('◈');
+    it('falls back to max for an unknown effort key', () => {
+        expect(getEffortStatus('turbo', 'opus')?.level).toBe('max');
     });
 
     it('colours the glyph by model family', () => {
@@ -38,8 +38,8 @@ describe('getEffortStatus', () => {
         expect(getEffortStatus('', 'opus')).toBeNull();
     });
 
-    it('exports the glyph and colour tables the statusline scheme is ported from', () => {
-        expect(Object.keys(EFFORT_GLYPHS)).toEqual(['max', 'xhigh', 'high', 'medium', 'low']);
+    it('exports the level and colour tables the statusline scheme is ported from', () => {
+        expect(EFFORT_LEVELS).toEqual(['max', 'xhigh', 'high', 'medium', 'low']);
         expect(Object.keys(MODEL_FAMILY_COLORS)).toEqual(['fable', 'opus', 'sonnet', 'haiku']);
     });
 });

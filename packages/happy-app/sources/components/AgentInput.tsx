@@ -17,6 +17,7 @@ import { getRateLimitStatus, selectRateLimits, type RateLimitStatus } from './st
 import { getEffortStatus, type EffortStatus } from './statusLine/effortStatus';
 import { getContextStatus, resolveContextBudget, type ContextStatus } from './statusLine/contextStatus';
 import { ContextRing } from './statusLine/ContextRing';
+import { EffortGlyph } from './statusLine/EffortGlyph';
 import { useActiveWord } from './autocomplete/useActiveWord';
 import { useActiveSuggestions } from './autocomplete/useActiveSuggestions';
 import { AgentInputAutocomplete } from './AgentInputAutocomplete';
@@ -334,16 +335,10 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
         }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 11 }}>
                 {p.effortStatus && (
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            color: p.effortStatus.color ?? theme.colors.textSecondary,
-                            ...Typography.default()
-                        }}
-                        accessibilityLabel="effort level"
-                    >
-                        {p.effortStatus.glyph}
-                    </Text>
+                    <EffortGlyph
+                        level={p.effortStatus.level}
+                        color={p.effortStatus.color ?? theme.colors.textSecondary}
+                    />
                 )}
                 {p.usedSetupToken && (
                     <Ionicons

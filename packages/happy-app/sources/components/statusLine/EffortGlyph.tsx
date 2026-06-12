@@ -1,9 +1,12 @@
 /**
- * Effort glyph for the AgentInput status row: fixed-size SVG shapes replacing
- * the unicode glyphs ◈◆●◐○, whose per-character metrics made the row's icons
- * render at visibly different sizes. Same ladder, drawn at a constant 12×12:
- * max = inset diamond, xhigh = filled diamond, high = filled circle,
- * medium = half-filled circle, low = open circle.
+ * Effort glyph for the AgentInput status row: the Mac statusline's unicode
+ * glyphs (◈ max / ◆ xhigh / ● high / ◐ medium / ○ low) redrawn as fixed-size
+ * SVG, because the characters' per-font metrics made the row's icons render
+ * at visibly different sizes. Each shape replicates its glyph's geometry:
+ * ◈ = white diamond containing a black diamond at half scale (U+25C8),
+ * ◆ = black diamond, ● = black circle, ◐ = circle with left half black,
+ * ○ = white circle. Diamonds get a small optical size bump so their visual
+ * weight matches the circles', as fonts do.
  */
 import * as React from 'react';
 import Svg, { Circle, Path, Polygon } from 'react-native-svg';
@@ -13,6 +16,7 @@ const SIZE = 12;
 const STROKE_WIDTH = 1.5;
 const CENTER = SIZE / 2;
 const RADIUS = (SIZE - 2 - STROKE_WIDTH) / 2;
+const DIAMOND_RADIUS = RADIUS * 1.15;
 
 const diamond = (r: number) =>
     `${CENTER},${CENTER - r} ${CENTER + r},${CENTER} ${CENTER},${CENTER + r} ${CENTER - r},${CENTER}`;
@@ -31,12 +35,12 @@ export const EffortGlyph = React.memo(function EffortGlyph(props: {
         >
             {level === 'max' && (
                 <>
-                    <Polygon points={diamond(RADIUS)} stroke={color} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" fill="none" />
-                    <Polygon points={diamond(RADIUS / 2.5)} fill={color} />
+                    <Polygon points={diamond(DIAMOND_RADIUS)} stroke={color} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" fill="none" />
+                    <Polygon points={diamond(DIAMOND_RADIUS / 2)} fill={color} />
                 </>
             )}
             {level === 'xhigh' && (
-                <Polygon points={diamond(RADIUS)} stroke={color} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" fill={color} />
+                <Polygon points={diamond(DIAMOND_RADIUS)} stroke={color} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" fill={color} />
             )}
             {level === 'high' && (
                 <Circle cx={CENTER} cy={CENTER} r={RADIUS} stroke={color} strokeWidth={STROKE_WIDTH} fill={color} />

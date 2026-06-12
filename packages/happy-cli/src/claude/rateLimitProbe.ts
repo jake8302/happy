@@ -13,6 +13,7 @@
  * account's subscription quota (~1 token) rather than incurring API cost.
  */
 import type { RateLimitsSnapshot, RateLimitWindow } from '@/api/types';
+import { toEpochSeconds } from './rateLimitEvents';
 
 const DEFAULT_BASE_URL = 'https://api.anthropic.com';
 
@@ -24,17 +25,12 @@ const PROBE_MODEL = 'claude-haiku-4-5-20251001';
 // identity, so the probe must spoof it exactly as the real binary does.
 const PROBE_SYSTEM = "You are Claude Code, Anthropic's official CLI for Claude.";
 
-// Epoch values below this are seconds; at or above, already milliseconds.
-const EPOCH_MS_THRESHOLD = 1e12;
-
 type HeaderBag = { get(name: string): string | null };
 
-function resetToIso(raw: string | null): string | null {
+function resetToEpochSeconds(raw: string | null): number | null {
     if (raw === null) return null;
     const n = Number(raw);
-    if (!Number.isFinite(n)) return null;
-    const ms = n < EPOCH_MS_THRESHOLD ? n * 1000 : n;
-    return new Date(ms).toISOString();
+    return Number.isFinite(n) ? toEpochSeconds(n) : null;
 }
 
 function windowFromHeaders(headers: HeaderBag, abbrev: string): RateLimitWindow | null {
@@ -42,11 +38,12 @@ function windowFromHeaders(headers: HeaderBag, abbrev: string): RateLimitWindow 
     if (rawUtil === null) return null;
     const frac = Number(rawUtil);
     if (!Number.isFinite(frac)) return null;
-    // Headers express utilization as a 0-1 fraction; the snapshot/app contract
-    // is a 0-100 percentage (one decimal keeps it clean past float noise).
-    const utilization = Math.round(frac * 1000) / 10;
-    const resetsAt = resetToIso(headers.get(`anthropic-ratelimit-unified-${abbrev}-reset`));
-    return { utilization, resetsAt };
+    // Headers express utilization as a 0-1 fraction; the snapshot contract is
+    // Claude Code's used_percentage 0-100 (one decimal keeps it clean past
+    // float noise).
+    const used_percentage = Math.round(frac * 1000) / 10;
+    const resets_at = resetToEpochSeconds(headers.get(`anthropic-ratelimit-unified-${abbrev}-reset`));
+    return { used_percentage, resets_at };
 }
 
 /**
@@ -54,10 +51,10 @@ function windowFromHeaders(headers: HeaderBag, abbrev: string): RateLimitWindow 
  * window carries a utilization figure (nothing worth pushing).
  */
 export function parseRateLimitHeaders(headers: HeaderBag, now: number): RateLimitsSnapshot | null {
-    const fiveHour = windowFromHeaders(headers, '5h');
-    const sevenDay = windowFromHeaders(headers, '7d');
-    if (!fiveHour && !sevenDay) return null;
-    return { fiveHour, sevenDay, updatedAt: now };
+    const five_hour = windowFromHeaders(headers, '5h');
+    const seven_day = windowFromHeaders(headers, '7d');
+    if (!five_hour && !seven_day) return null;
+    return { five_hour, seven_day, updated_at: now };
 }
 
 export type ProbeOptions = {

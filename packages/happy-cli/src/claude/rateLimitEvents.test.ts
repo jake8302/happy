@@ -1,62 +1,62 @@
 import { describe, expect, it } from 'vitest';
-import { mergeRateLimitEvent, mergeRateLimitWindows } from './rateLimitEvents';
+import { mergeRateLimitEvent, mergeRateLimitWindows, toLegacyRateLimits } from './rateLimitEvents';
 import type { RateLimitsSnapshot } from '@/api/types';
 
 const NOW = 1_770_000_000_000;
 
 describe('mergeRateLimitWindows', () => {
-    it('fills utilization from a probe-style update while keeping the event-carried status', () => {
+    it('fills used_percentage from a probe-style update while keeping the event-carried status', () => {
         const prev: RateLimitsSnapshot = {
-            fiveHour: { utilization: null, resetsAt: '2026-02-02T02:00:00.000Z', status: 'allowed_warning' },
-            sevenDay: null,
-            updatedAt: NOW - 60_000,
+            five_hour: { used_percentage: null, resets_at: 1_770_007_200, status: 'allowed_warning' },
+            seven_day: null,
+            updated_at: NOW - 60_000,
         };
 
         const result = mergeRateLimitWindows(prev, {
-            fiveHour: { utilization: 15, resetsAt: '2026-02-02T03:00:00.000Z' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
+            five_hour: { used_percentage: 15, resets_at: 1_770_010_800 },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 15, resetsAt: '2026-02-02T03:00:00.000Z', status: 'allowed_warning' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW,
+            five_hour: { used_percentage: 15, resets_at: 1_770_010_800, status: 'allowed_warning' },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW,
         });
     });
 
     it('leaves windows the update does not mention untouched', () => {
         const prev: RateLimitsSnapshot = {
-            fiveHour: { utilization: 15, resetsAt: '2026-02-02T02:00:00.000Z' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW - 60_000,
+            five_hour: { used_percentage: 15, resets_at: 1_770_007_200 },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW - 60_000,
         };
 
         const result = mergeRateLimitWindows(prev, {
-            fiveHour: { utilization: 16 },
+            five_hour: { used_percentage: 16 },
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 16, resetsAt: '2026-02-02T02:00:00.000Z' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW,
+            five_hour: { used_percentage: 16, resets_at: 1_770_007_200 },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW,
         });
     });
 
     it('builds windows from scratch when there is no previous snapshot', () => {
         const result = mergeRateLimitWindows(null, {
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: null,
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW,
+            five_hour: null,
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW,
         });
     });
 });
 
 describe('mergeRateLimitEvent', () => {
-    it('creates a five-hour window from scratch, converting epoch-seconds resetsAt to ISO', () => {
+    it('creates a five-hour window from scratch, keeping resets_at in epoch seconds', () => {
         const result = mergeRateLimitEvent(null, {
             status: 'allowed',
             rateLimitType: 'five_hour',
@@ -65,17 +65,17 @@ describe('mergeRateLimitEvent', () => {
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString(), status: 'allowed' },
-            sevenDay: null,
-            updatedAt: NOW,
+            five_hour: { used_percentage: 42, resets_at: 1_770_007_200, status: 'allowed' },
+            seven_day: null,
+            updated_at: NOW,
         });
     });
 
     it('merges a seven-day event over a previous snapshot, preserving the five-hour window', () => {
         const prev: RateLimitsSnapshot = {
-            fiveHour: { utilization: 42, resetsAt: '2026-02-02T02:00:00.000Z' },
-            sevenDay: null,
-            updatedAt: NOW - 60_000,
+            five_hour: { used_percentage: 42, resets_at: 1_770_007_200 },
+            seven_day: null,
+            updated_at: NOW - 60_000,
         };
 
         const result = mergeRateLimitEvent(prev, {
@@ -86,9 +86,9 @@ describe('mergeRateLimitEvent', () => {
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 42, resetsAt: '2026-02-02T02:00:00.000Z' },
-            sevenDay: { utilization: 71, resetsAt: new Date(1_770_400_000_000).toISOString(), status: 'allowed_warning' },
-            updatedAt: NOW,
+            five_hour: { used_percentage: 42, resets_at: 1_770_007_200 },
+            seven_day: { used_percentage: 71, resets_at: 1_770_400_000, status: 'allowed_warning' },
+            updated_at: NOW,
         });
     });
 
@@ -98,17 +98,17 @@ describe('mergeRateLimitEvent', () => {
             rateLimitType: 'seven_day_opus',
             utilization: 55,
         }, NOW);
-        expect(opus?.sevenDay).toEqual({ utilization: 55, resetsAt: null, status: 'allowed' });
+        expect(opus?.seven_day).toEqual({ used_percentage: 55, resets_at: null, status: 'allowed' });
 
         const sonnet = mergeRateLimitEvent(null, {
             status: 'allowed',
             rateLimitType: 'seven_day_sonnet',
             utilization: 12,
         }, NOW);
-        expect(sonnet?.sevenDay).toEqual({ utilization: 12, resetsAt: null, status: 'allowed' });
+        expect(sonnet?.seven_day).toEqual({ used_percentage: 12, resets_at: null, status: 'allowed' });
     });
 
-    it('accepts resetsAt already in epoch milliseconds', () => {
+    it('normalizes resetsAt given in epoch milliseconds down to seconds', () => {
         const result = mergeRateLimitEvent(null, {
             status: 'allowed',
             rateLimitType: 'five_hour',
@@ -116,7 +116,7 @@ describe('mergeRateLimitEvent', () => {
             resetsAt: 1_770_007_200_000,
         }, NOW);
 
-        expect(result?.fiveHour?.resetsAt).toBe(new Date(1_770_007_200_000).toISOString());
+        expect(result?.five_hour?.resets_at).toBe(1_770_007_200);
     });
 
     it('merges utilization-less events (real-world setup-token payloads), carrying status', () => {
@@ -127,37 +127,37 @@ describe('mergeRateLimitEvent', () => {
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: null, resetsAt: new Date(1_781_164_800_000).toISOString(), status: 'allowed' },
-            sevenDay: null,
-            updatedAt: NOW,
+            five_hour: { used_percentage: null, resets_at: 1_781_164_800, status: 'allowed' },
+            seven_day: null,
+            updated_at: NOW,
         });
     });
 
-    it('keeps the last-known utilization when an event carries none (Claude Code merge rule)', () => {
+    it('keeps the last-known used_percentage when an event carries none (Claude Code merge rule)', () => {
         const prev: RateLimitsSnapshot = {
-            fiveHour: { utilization: 15, resetsAt: '2026-02-02T02:00:00.000Z' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW - 60_000,
+            five_hour: { used_percentage: 15, resets_at: 1_770_007_200 },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW - 60_000,
         };
 
         const result = mergeRateLimitEvent(prev, {
             status: 'allowed',
             rateLimitType: 'five_hour',
-            resetsAt: 1_770_007_200,
+            resetsAt: 1_770_010_800,
         }, NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 15, resetsAt: new Date(1_770_007_200_000).toISOString(), status: 'allowed' },
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW,
+            five_hour: { used_percentage: 15, resets_at: 1_770_010_800, status: 'allowed' },
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW,
         });
     });
 
-    it('keeps the last-known resetsAt when an event carries none', () => {
+    it('keeps the last-known resets_at when an event carries none', () => {
         const prev: RateLimitsSnapshot = {
-            fiveHour: null,
-            sevenDay: { utilization: 54, resetsAt: '2026-02-05T02:00:00.000Z' },
-            updatedAt: NOW - 60_000,
+            five_hour: null,
+            seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+            updated_at: NOW - 60_000,
         };
 
         const result = mergeRateLimitEvent(prev, {
@@ -165,9 +165,9 @@ describe('mergeRateLimitEvent', () => {
             rateLimitType: 'seven_day',
         }, NOW);
 
-        expect(result?.sevenDay).toEqual({
-            utilization: 54,
-            resetsAt: '2026-02-05T02:00:00.000Z',
+        expect(result?.seven_day).toEqual({
+            used_percentage: 54,
+            resets_at: 1_770_400_000,
             status: 'allowed_warning',
         });
     });
@@ -183,5 +183,29 @@ describe('mergeRateLimitEvent', () => {
             status: 'allowed',
             utilization: 30,
         }, NOW)).toBeNull();
+    });
+});
+
+describe('toLegacyRateLimits', () => {
+    it('converts the CC-shaped snapshot to the pre-statusLine camelCase/ISO mirror', () => {
+        const legacy = toLegacyRateLimits({
+            five_hour: { used_percentage: 42, resets_at: 1_770_007_200, status: 'allowed' },
+            seven_day: { used_percentage: 71, resets_at: null },
+            updated_at: NOW,
+        });
+
+        expect(legacy).toEqual({
+            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString(), status: 'allowed' },
+            sevenDay: { utilization: 71, resetsAt: null },
+            updatedAt: NOW,
+        });
+    });
+
+    it('passes absent windows through as null', () => {
+        const legacy = toLegacyRateLimits({
+            five_hour: { used_percentage: 10, resets_at: null },
+            updated_at: NOW,
+        });
+        expect(legacy.sevenDay).toBeNull();
     });
 });

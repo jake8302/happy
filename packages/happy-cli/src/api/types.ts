@@ -284,21 +284,71 @@ export type MessageContent = z.infer<typeof MessageContentSchema>
  * get_usage control request at turn boundaries. `utilization` is raw used %
  * (0-100); `resetsAt` is the ISO 8601 window-reset timestamp. Either window
  * may be null when the account/binary doesn't expose it.
+ *
+ * Field names and semantics copy Claude Code's statusline `rate_limits`
+ * emission exactly: `used_percentage` 0-100, `resets_at` epoch seconds.
+ * `status` is a happy extension — setup-token sessions get header-derived
+ * standing without a percentage, so the app colours by status when the
+ * percentage is unknown.
  */
 export type RateLimitWindow = {
-  utilization: number | null,
-  resetsAt: string | null,
-  /**
-   * Header-derived standing from `rate_limit_event` stream messages. Present
-   * only on event-derived windows; setup-token sessions get status without
-   * utilization, so the app colours by status when the percentage is unknown.
-   */
+  used_percentage: number | null,
+  resets_at: number | null,
   status?: 'allowed' | 'allowed_warning' | 'rejected',
 }
 
 export type RateLimitsSnapshot = {
-  fiveHour?: RateLimitWindow | null,
-  sevenDay?: RateLimitWindow | null,
+  five_hour?: RateLimitWindow | null,
+  seven_day?: RateLimitWindow | null,
+  updated_at: number,
+}
+
+/** The raw API usage block, passed through as Claude Code's statusline `current_usage`. */
+export type ContextWindowUsage = {
+  input_tokens: number,
+  output_tokens: number,
+  cache_creation_input_tokens: number,
+  cache_read_input_tokens: number,
+}
+
+/**
+ * Claude Code's statusline `context_window` object, field for field.
+ * `total_input_tokens` = input + cache creation + cache read;
+ * `used_percentage` = round(total_input / size * 100) clamped to 0-100.
+ * Percentages are null when the SDK didn't report a window size.
+ */
+export type ContextWindowFacts = {
+  total_input_tokens: number,
+  total_output_tokens: number,
+  context_window_size: number | null,
+  current_usage: ContextWindowUsage | null,
+  used_percentage: number | null,
+  remaining_percentage: number | null,
+}
+
+/**
+ * The statusline facts the CLI publishes for the app — a field-for-field
+ * subset of the JSON Claude Code pipes to statusline scripts, so the app
+ * can play the script's role (pick fields, derive display). Extensions
+ * beyond CC's payload: `auto_compact_tokens` (machine-local; CC leaves it
+ * for the script to read, but our "script" runs remote) and `updated_at`
+ * (metadata persists, unlike CC's live stdin emission).
+ */
+export type StatusLineFacts = {
+  context_window?: ContextWindowFacts,
+  exceeds_200k_tokens?: boolean,
+  rate_limits?: {
+    five_hour?: RateLimitWindow,
+    seven_day?: RateLimitWindow,
+  },
+  auto_compact_tokens?: number,
+  updated_at: number,
+}
+
+/** Pre-statusLine rate-limit metadata shape (camelCase, ISO resets). Still published as a mirror for app builds that predate `statusLine`. */
+export type LegacyRateLimitsSnapshot = {
+  fiveHour?: { utilization: number | null, resetsAt: string | null, status?: string } | null,
+  sevenDay?: { utilization: number | null, resetsAt: string | null, status?: string } | null,
   updatedAt: number,
 }
 
@@ -349,8 +399,10 @@ export type Metadata = {
   forkedFromMessageId?: string
   /** True when the session authenticated via a setup token (CLAUDE_CODE_OAUTH_TOKEN), not the machine login. */
   usedSetupToken?: boolean
-  /** Latest plan rate-limit usage observed by this session (5h / 7d windows). */
-  rateLimits?: RateLimitsSnapshot | null
+  /** Deprecated mirror of `statusLine.rate_limits` for app builds that predate it. */
+  rateLimits?: LegacyRateLimitsSnapshot | null
+  /** Statusline facts in Claude Code's emission shape; the app derives all display from these. */
+  statusLine?: StatusLineFacts | null
 };
 
 export type AgentState = {

@@ -1,5 +1,8 @@
 import { render } from "ink";
 import { Session } from "./session";
+import { readAutoCompactTokens } from "./contextWindowFacts";
+import { toLegacyRateLimits } from "./rateLimitEvents";
+import type { StatusLineFacts } from "@/api/types";
 import { MessageBuffer } from "@/ui/ink/messageBuffer";
 import { RemoteModeDisplay } from "@/ui/ink/RemoteModeDisplay";
 import React from "react";
@@ -287,9 +290,37 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
         // actually changes (e.g., new session started or /clear command used).
         // See: https://github.com/anthropics/happy-cli/issues/143
         let previousSessionId: string | null = null;
-        // Skip metadata writes when a rate-limit poll returns the same numbers
-        // (updatedAt alone changing isn't worth a metadata version bump).
-        let lastRateLimitsKey: string | null = null;
+        // Status-line facts for the app, mirroring Claude Code's statusline
+        // stdin payload field-by-field (context_window, rate_limits) plus the
+        // documented extensions (auto_compact_tokens is machine-local — CC
+        // leaves it to the statusline script; updated_at because metadata
+        // persists unlike CC's live stdin). The webapp owns every derived
+        // number, colour, and glyph.
+        const statusLineFacts: StatusLineFacts = { updated_at: 0 };
+        const autoCompactTokens = readAutoCompactTokens();
+        if (autoCompactTokens !== null) {
+            statusLineFacts.auto_compact_tokens = autoCompactTokens;
+        }
+        // Skip metadata writes when nothing but updated_at would change
+        // (not worth a metadata version bump).
+        let lastStatusLineKey: string | null = null;
+        const publishStatusLine = () => {
+            const { updated_at: _, ...facts } = statusLineFacts;
+            const key = JSON.stringify(facts);
+            if (key === lastStatusLineKey) return;
+            lastStatusLineKey = key;
+            statusLineFacts.updated_at = Date.now();
+            logger.debug('[remote] Status-line facts updated:', statusLineFacts);
+            session.client.updateMetadata((currentMetadata) => ({
+                ...currentMetadata,
+                statusLine: { ...statusLineFacts },
+            }));
+        };
+        // Publish eagerly so a configured auto-compact budget shapes the
+        // gauge before the first turn completes.
+        if (autoCompactTokens !== null) {
+            publishStatusLine();
+        }
         while (!exitReason) {
             logger.debug('[remote]: launch');
             messageBuffer.addMessage('═'.repeat(40), 'status');
@@ -406,14 +437,24 @@ export async function claudeRemoteLauncher(session: Session): Promise<'switch' |
                         }));
                     },
                     onRateLimits: (rateLimits) => {
-                        const key = JSON.stringify([rateLimits.fiveHour, rateLimits.sevenDay]);
-                        if (key === lastRateLimitsKey) return;
-                        lastRateLimitsKey = key;
-                        logger.debug('[remote] Rate limits updated:', rateLimits);
+                        // CC omits windows it has no data for rather than
+                        // writing nulls; mirror that omission style.
+                        statusLineFacts.rate_limits = {
+                            ...(rateLimits.five_hour ? { five_hour: rateLimits.five_hour } : {}),
+                            ...(rateLimits.seven_day ? { seven_day: rateLimits.seven_day } : {}),
+                        };
+                        publishStatusLine();
+                        // Deprecated camelCase/ISO mirror for webapps that
+                        // predate statusLine; remove once all clients migrate.
                         session.client.updateMetadata((currentMetadata) => ({
                             ...currentMetadata,
-                            rateLimits,
+                            rateLimits: toLegacyRateLimits(rateLimits),
                         }));
+                    },
+                    onContextWindow: (contextWindow) => {
+                        statusLineFacts.context_window = contextWindow;
+                        statusLineFacts.exceeds_200k_tokens = contextWindow.total_input_tokens > 200_000;
+                        publishStatusLine();
                     },
                     onQueryReady: (q) => {
                         permissionHandler.setPermissionModeUpdater(async (mode) => {

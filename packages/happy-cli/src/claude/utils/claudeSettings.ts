@@ -12,6 +12,8 @@ import { logger } from '@/ui/logger';
 
 export interface ClaudeSettings {
   includeCoAuthoredBy?: boolean;
+  autoCompactEnabled?: boolean;
+  autoCompactWindow?: number;
   [key: string]: any;
 }
 

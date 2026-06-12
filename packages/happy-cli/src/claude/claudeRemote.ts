@@ -3,6 +3,7 @@ import { query, type QueryOptions, type SDKMessage, type SDKSystemMessage, Abort
 import type { MessageParam } from '@anthropic-ai/sdk/resources'
 import { mapToClaudeMode } from "./utils/permissionMode";
 import { claudeCheckSession } from "./utils/claudeCheckSession";
+import { contextWindowFromResult } from "./contextWindowFacts";
 import { join } from 'node:path';
 import { parseSpecialCommand } from "@/parsers/specialCommands";
 import { logger } from "@/lib";
@@ -12,8 +13,8 @@ import { awaitFileExist } from "@/modules/watcher/awaitFileExist";
 import { systemPrompt } from "./utils/systemPrompt";
 import { PermissionResult } from "./sdk/types";
 import type { JsRuntime } from "./runClaude";
-import type { RateLimitsSnapshot } from "@/api/types";
-import { mergeRateLimitEvent, mergeRateLimitWindows } from "./rateLimitEvents";
+import type { ContextWindowFacts, RateLimitsSnapshot } from "@/api/types";
+import { mergeRateLimitEvent, mergeRateLimitWindows, toEpochSeconds } from "./rateLimitEvents";
 import { probeRateLimits } from "./rateLimitProbe";
 
 export async function claudeRemote(opts: {
@@ -47,7 +48,9 @@ export async function claudeRemote(opts: {
     onSessionReset?: () => void,
     onSDKMetadata?: (metadata: { tools?: string[]; slashCommands?: string[]; mcpServers?: { name: string; status: string }[]; skills?: string[] }) => void,
     /** Called with the plan rate-limit snapshot polled at turn boundaries (subscription accounts only). */
-    onRateLimits?: (rateLimits: RateLimitsSnapshot) => void
+    onRateLimits?: (rateLimits: RateLimitsSnapshot) => void,
+    /** Called with Claude Code-shaped context-window facts observed on result messages. */
+    onContextWindow?: (facts: ContextWindowFacts) => void
 }) {
 
     // Check if session is valid
@@ -201,8 +204,8 @@ export async function claudeRemote(opts: {
         if (snapshot) {
             // Merge so probe data (no status) never erases event-carried status.
             pushRateLimits(mergeRateLimitWindows(lastRateLimits, {
-                ...(snapshot.fiveHour ? { fiveHour: snapshot.fiveHour } : {}),
-                ...(snapshot.sevenDay ? { sevenDay: snapshot.sevenDay } : {}),
+                ...(snapshot.five_hour ? { five_hour: snapshot.five_hour } : {}),
+                ...(snapshot.seven_day ? { seven_day: snapshot.seven_day } : {}),
             }, Date.now()));
         }
     };
@@ -216,9 +219,10 @@ export async function claudeRemote(opts: {
             // Right after spawn Claude may not have made an API call yet — both
             // utilizations come back null; skip the no-data snapshot.
             if (limits.five_hour?.utilization == null && limits.seven_day?.utilization == null) return;
+            // get_usage carries ISO resets_at; the snapshot contract is epoch seconds.
             pushRateLimits(mergeRateLimitWindows(lastRateLimits, {
-                ...(limits.five_hour ? { fiveHour: { utilization: limits.five_hour.utilization, resetsAt: limits.five_hour.resets_at } } : {}),
-                ...(limits.seven_day ? { sevenDay: { utilization: limits.seven_day.utilization, resetsAt: limits.seven_day.resets_at } } : {}),
+                ...(limits.five_hour ? { five_hour: { used_percentage: limits.five_hour.utilization, resets_at: toEpochSeconds(limits.five_hour.resets_at) } } : {}),
+                ...(limits.seven_day ? { seven_day: { used_percentage: limits.seven_day.utilization, resets_at: toEpochSeconds(limits.seven_day.resets_at) } } : {}),
             }, Date.now()));
             return;
         }).catch((e) => {
@@ -311,6 +315,11 @@ export async function claudeRemote(opts: {
 
                 // Refresh plan rate limits now that the turn's API traffic is done
                 pollRateLimits();
+
+                const contextWindow = contextWindowFromResult(message.usage, message.modelUsage);
+                if (contextWindow !== null) {
+                    opts.onContextWindow?.(contextWindow);
+                }
 
                 // Send completion messages
                 if (isCompactCommand) {

@@ -8,7 +8,7 @@ function headers(map: Record<string, string>): Headers {
 }
 
 describe('parseRateLimitHeaders', () => {
-    it('converts 0-1 fractions to 0-100 percentages and epoch-seconds resets to ISO', () => {
+    it('converts 0-1 fractions to 0-100 percentages and keeps resets as epoch seconds', () => {
         const result = parseRateLimitHeaders(headers({
             'anthropic-ratelimit-unified-5h-utilization': '0.03',
             'anthropic-ratelimit-unified-5h-reset': '1781182800',
@@ -17,9 +17,9 @@ describe('parseRateLimitHeaders', () => {
         }), NOW);
 
         expect(result).toEqual({
-            fiveHour: { utilization: 3, resetsAt: new Date(1781182800_000).toISOString() },
-            sevenDay: { utilization: 35, resetsAt: new Date(1781496000_000).toISOString() },
-            updatedAt: NOW,
+            five_hour: { used_percentage: 3, resets_at: 1_781_182_800 },
+            seven_day: { used_percentage: 35, resets_at: 1_781_496_000 },
+            updated_at: NOW,
         });
     });
 
@@ -28,15 +28,15 @@ describe('parseRateLimitHeaders', () => {
             'anthropic-ratelimit-unified-5h-utilization': '0.426',
             'anthropic-ratelimit-unified-5h-reset': '1781182800',
         }), NOW);
-        expect(result?.fiveHour?.utilization).toBe(42.6);
+        expect(result?.five_hour?.used_percentage).toBe(42.6);
     });
 
-    it('includes a window with utilization but no reset (resetsAt null)', () => {
+    it('includes a window with utilization but no reset (resets_at null)', () => {
         const result = parseRateLimitHeaders(headers({
             'anthropic-ratelimit-unified-5h-utilization': '0.1',
         }), NOW);
-        expect(result?.fiveHour).toEqual({ utilization: 10, resetsAt: null });
-        expect(result?.sevenDay).toBeNull();
+        expect(result?.five_hour).toEqual({ used_percentage: 10, resets_at: null });
+        expect(result?.seven_day).toBeNull();
     });
 
     it('returns null when neither window carries a utilization header', () => {
@@ -64,7 +64,7 @@ describe('probeRateLimits', () => {
 
         const result = await probeRateLimits({ token: 'sk-ant-oat-xxx' }, fetchImpl, NOW);
 
-        expect(result?.fiveHour).toEqual({ utilization: 3, resetsAt: new Date(1781182800_000).toISOString() });
+        expect(result?.five_hour).toEqual({ used_percentage: 3, resets_at: 1_781_182_800 });
         const [url, init] = fetchImpl.mock.calls[0];
         expect(url).toBe('https://api.anthropic.com/v1/messages');
         expect((init.headers as Record<string, string>)['authorization']).toBe('Bearer sk-ant-oat-xxx');

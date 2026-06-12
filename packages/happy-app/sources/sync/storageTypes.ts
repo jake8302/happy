@@ -4,6 +4,17 @@ import { z } from "zod";
 // Agent states
 //
 
+/**
+ * One rate-limit window, shaped like Claude Code's statusline payload:
+ * `used_percentage` 0-100, `resets_at` epoch seconds. `status` is a happy
+ * extension carried off rate_limit_event stream messages.
+ */
+const RateLimitWindowSchema = z.object({
+    used_percentage: z.number().nullable(),
+    resets_at: z.number().nullable(),
+    status: z.string().nullish(),
+});
+
 export const MetadataSchema = z.object({
     models: z.array(z.object({
         code: z.string(),
@@ -63,9 +74,9 @@ export const MetadataSchema = z.object({
     /** True when the session authenticated via a setup token (CLAUDE_CODE_OAUTH_TOKEN), not the machine login. */
     usedSetupToken: z.boolean().optional(),
     /**
-     * Plan rate-limit snapshot polled by the CLI at turn boundaries.
-     * `utilization` is raw used % (0-100); `resetsAt` is the ISO 8601
-     * window-reset timestamp. Rides encrypted metadata — no server schema.
+     * @deprecated Legacy plan rate-limit snapshot (camelCase, ISO resetsAt).
+     * New CLIs publish `statusLine.rate_limits` and keep this as a mirror
+     * for old webapps; prefer statusLine and fall back to this.
      */
     rateLimits: z.object({
         fiveHour: z.object({
@@ -79,6 +90,38 @@ export const MetadataSchema = z.object({
             status: z.string().nullish(),
         }).nullish(),
         updatedAt: z.number(),
+    }).nullish(),
+    /**
+     * Status-line facts published by the CLI, mirroring Claude Code's
+     * statusline stdin payload field-by-field (context_window,
+     * rate_limits) plus documented extensions: `auto_compact_tokens`
+     * (machine-local budget CC leaves to the statusline script),
+     * `status` on windows (from rate_limit_event), and `updated_at`
+     * (metadata persists, unlike CC's live stdin). The app owns all
+     * derived math, colours, and glyphs. Supersedes the legacy
+     * `rateLimits` field above.
+     */
+    statusLine: z.object({
+        context_window: z.object({
+            total_input_tokens: z.number(),
+            total_output_tokens: z.number(),
+            context_window_size: z.number().nullable(),
+            current_usage: z.object({
+                input_tokens: z.number(),
+                output_tokens: z.number(),
+                cache_creation_input_tokens: z.number(),
+                cache_read_input_tokens: z.number(),
+            }).nullable(),
+            used_percentage: z.number().nullable(),
+            remaining_percentage: z.number().nullable(),
+        }).optional(),
+        exceeds_200k_tokens: z.boolean().optional(),
+        rate_limits: z.object({
+            five_hour: RateLimitWindowSchema.optional(),
+            seven_day: RateLimitWindowSchema.optional(),
+        }).optional(),
+        auto_compact_tokens: z.number().optional(),
+        updated_at: z.number(),
     }).nullish(),
 });
 

@@ -13,9 +13,10 @@ import { EffortLevel } from './modelModeOptions';
 import { hapticsLight, hapticsError } from './haptics';
 import { Shaker, ShakeInstance } from './Shaker';
 import { StatusDot } from './StatusDot';
-import { getRateLimitStatus, type RateLimitStatus } from './rateLimitStatus';
-import { getEffortStatus, type EffortStatus } from './effortStatus';
-import { getContextStatus, type ContextStatus } from './contextStatus';
+import { getRateLimitStatus, selectRateLimits, type RateLimitStatus } from './statusLine/rateLimitStatus';
+import { getEffortStatus, type EffortStatus } from './statusLine/effortStatus';
+import { getContextStatus, resolveContextBudget, type ContextStatus } from './statusLine/contextStatus';
+import { ContextRing } from './statusLine/ContextRing';
 import { useActiveWord } from './autocomplete/useActiveWord';
 import { useActiveSuggestions } from './autocomplete/useActiveSuggestions';
 import { AgentInputAutocomplete } from './AgentInputAutocomplete';
@@ -95,8 +96,6 @@ interface AgentInputProps {
     onRemoveImage?: (id: string) => void;
     onAddImages?: (images: AttachmentPreview[]) => void;
 }
-
-const MAX_CONTEXT_SIZE = 190000;
 
 const stylesheet = StyleSheet.create((theme, runtime) => ({
     container: {
@@ -355,16 +354,11 @@ const AgentInputStatusRow = React.memo(function AgentInputStatusRow(p: StatusRow
                     />
                 )}
                 {p.contextStatus && (
-                    <Text
-                        style={{
-                            fontSize: 11,
-                            color: p.contextStatus.color,
-                            ...Typography.default()
-                        }}
+                    <ContextRing
+                        fillFraction={p.contextStatus.fillFraction}
+                        color={p.contextStatus.color}
                         accessibilityLabel={`context ${p.contextStatus.percentRemaining}% remaining`}
-                    >
-                        {p.contextStatus.glyph}
-                    </Text>
+                    />
                 )}
                 {p.rateLimitStatus && (
                     <Text
@@ -621,20 +615,39 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
         return label;
     }, [isSandboxEnabled]);
 
-    // Context pie (statusline scheme: fill + severity gradient toward the
-    // auto-compact budget). Replaces the old "x% left" text.
+    // Context ring (statusline scheme: fill + severity gradient toward the
+    // auto-compact budget). The budget resolves from raw CLI facts; old CLIs
+    // that never published them fall back to the legacy 190K guess.
     const contextStatus = React.useMemo(
         () => (props.usageData?.contextSize
-            ? getContextStatus(props.usageData.contextSize, MAX_CONTEXT_SIZE, props.showStatusLine ?? false)
+            ? getContextStatus(
+                props.usageData.contextSize,
+                resolveContextBudget(props.metadata?.statusLine),
+                props.showStatusLine ?? false,
+            )
             : null),
-        [props.usageData?.contextSize, props.showStatusLine]
+        // Primitive deps: the metadata object gets a fresh identity on every
+        // session metadata update, which would defeat the status-row memo.
+        [
+            props.usageData?.contextSize,
+            props.metadata?.statusLine?.context_window?.context_window_size,
+            props.metadata?.statusLine?.auto_compact_tokens,
+            props.showStatusLine,
+        ]
     );
 
-    // Plan rate-limit status rides session metadata. Shares the status-line
+    // Plan rate-limit status rides session metadata (statusLine.rate_limits
+    // from new CLIs, legacy rateLimits from old ones). Shares the status-line
     // toggle, and auto-appears when pace turns orange (see rateLimitStatus.ts).
     const rateLimitStatus = React.useMemo(
-        () => getRateLimitStatus(props.metadata?.rateLimits, props.showStatusLine ?? false),
-        [props.metadata?.rateLimits, props.showStatusLine]
+        () => getRateLimitStatus(selectRateLimits(props.metadata), props.showStatusLine ?? false),
+        // updated_at stands in for the window contents: the CLI bumps it on
+        // every published change, so it's a stable primitive change-key.
+        [
+            props.metadata?.statusLine?.updated_at,
+            props.metadata?.rateLimits?.updatedAt,
+            props.showStatusLine,
+        ]
     );
 
     // Effort glyph (statusline scheme: glyph per level, tinted by model

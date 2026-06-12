@@ -139,9 +139,52 @@ describe('claudeRemote', () => {
         }));
 
         expect(onRateLimits).toHaveBeenCalledWith({
-            fiveHour: { utilization: 42, resetsAt: new Date(1_770_007_200_000).toISOString(), status: 'allowed' },
-            sevenDay: null,
-            updatedAt: expect.any(Number),
+            five_hour: { used_percentage: 42, resets_at: 1_770_007_200, status: 'allowed' },
+            seven_day: null,
+            updated_at: expect.any(Number),
+        });
+    });
+
+    it('reports Claude Code-shaped context-window facts from result messages', async () => {
+        vi.mocked(query).mockReturnValue({
+            setPermissionMode: vi.fn(),
+            async *[Symbol.asyncIterator]() {
+                yield {
+                    type: 'result',
+                    subtype: 'success',
+                    usage: {
+                        input_tokens: 5_000,
+                        output_tokens: 1_200,
+                        cache_creation_input_tokens: 20_000,
+                        cache_read_input_tokens: 75_000,
+                    },
+                    modelUsage: {
+                        'claude-haiku-4-5': { contextWindow: 200000 },
+                        'claude-opus-4-8': { contextWindow: 1000000 },
+                    },
+                };
+            },
+        } as any);
+
+        const onContextWindow = vi.fn();
+
+        await claudeRemote(baseOpts({
+            nextMessage: oneMessage('hello'),
+            onContextWindow,
+        }));
+
+        expect(onContextWindow).toHaveBeenCalledWith({
+            total_input_tokens: 100_000,
+            total_output_tokens: 1_200,
+            context_window_size: 1_000_000,
+            current_usage: {
+                input_tokens: 5_000,
+                output_tokens: 1_200,
+                cache_creation_input_tokens: 20_000,
+                cache_read_input_tokens: 75_000,
+            },
+            used_percentage: 10,
+            remaining_percentage: 90,
         });
     });
 
@@ -180,9 +223,9 @@ describe('claudeRemote', () => {
 
         await vi.waitFor(() => {
             expect(onRateLimits).toHaveBeenCalledWith({
-                fiveHour: { utilization: 15, resetsAt: new Date(1_770_007_200_000).toISOString() },
-                sevenDay: { utilization: 54, resetsAt: new Date(1_770_400_000_000).toISOString() },
-                updatedAt: expect.any(Number),
+                five_hour: { used_percentage: 15, resets_at: 1_770_007_200 },
+                seven_day: { used_percentage: 54, resets_at: 1_770_400_000 },
+                updated_at: expect.any(Number),
             });
         });
     });

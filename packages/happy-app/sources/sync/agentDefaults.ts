@@ -27,8 +27,8 @@ export type AgentDefaultConfig = {
 };
 
 const codeAgentDefaults: Record<AgentKey, AgentDefaultConfig> = {
-    claude: { permissionMode: 'auto', modelMode: 'opus', effortLevel: 'medium' },
-    codex: { permissionMode: 'yolo', modelMode: 'gpt-5.5', effortLevel: 'medium' },
+    claude: { permissionMode: 'auto', modelMode: 'opus', effortLevel: 'xhigh' },
+    codex: { permissionMode: 'safe-yolo', modelMode: 'gpt-5.5', effortLevel: 'xhigh' },
     gemini: { permissionMode: 'default', modelMode: 'gemini-2.5-pro', effortLevel: null },
     openclaw: { permissionMode: 'default', modelMode: 'default', effortLevel: null },
 };

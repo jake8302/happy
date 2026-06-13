@@ -56,10 +56,10 @@ describe('modelModeOptions', () => {
     it('uses code defaults for agent defaults', () => {
         expect(getDefaultPermissionModeKey('claude')).toBe('auto');
         expect(getDefaultModelKey('claude')).toBe('opus');
-        expect(getDefaultEffortKey('claude')).toBe('medium');
-        expect(getDefaultPermissionModeKey('codex')).toBe('yolo');
+        expect(getDefaultEffortKey('claude')).toBe('xhigh');
+        expect(getDefaultPermissionModeKey('codex')).toBe('safe-yolo');
         expect(getDefaultModelKey('codex')).toBe('gpt-5.5');
-        expect(getDefaultEffortKey('codex')).toBe('medium');
+        expect(getDefaultEffortKey('codex')).toBe('xhigh');
     });
 
     it('prefers metadata models over hardcoded fallbacks', () => {

@@ -60,8 +60,8 @@ function describeCodexFailure(msg: any): string | null {
 }
 
 const DEFAULT_CODEX_MODEL = 'gpt-5.5';
-const DEFAULT_CODEX_EFFORT: ReasoningEffort = 'medium';
-const DEFAULT_CODEX_PERMISSION_MODE: PermissionMode = 'yolo';
+const DEFAULT_CODEX_EFFORT: ReasoningEffort = 'xhigh';
+const DEFAULT_CODEX_PERMISSION_MODE: PermissionMode = 'safe-yolo';
 
 /**
  * Main entry point for the codex command with ink UI

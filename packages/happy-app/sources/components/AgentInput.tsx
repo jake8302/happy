@@ -15,7 +15,7 @@ import { Shaker, ShakeInstance } from './Shaker';
 import { StatusDot } from './StatusDot';
 import { getRateLimitStatus, selectRateLimits, type RateLimitStatus } from './statusLine/rateLimitStatus';
 import { getEffortStatus, type EffortStatus } from './statusLine/effortStatus';
-import { getContextStatus, resolveContextBudget, type ContextStatus } from './statusLine/contextStatus';
+import { getContextStatus, resolveContextBudget, resolveContextSize, type ContextStatus } from './statusLine/contextStatus';
 import { ContextRing } from './statusLine/ContextRing';
 import { EffortGlyph } from './statusLine/EffortGlyph';
 import { useActiveWord } from './autocomplete/useActiveWord';
@@ -614,17 +614,23 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     // auto-compact budget). The budget resolves from raw CLI facts; old CLIs
     // that never published them fall back to the legacy 190K guess.
     const contextStatus = React.useMemo(
-        () => (props.usageData?.contextSize
-            ? getContextStatus(
-                props.usageData.contextSize,
-                resolveContextBudget(props.metadata?.statusLine),
-                props.showStatusLine ?? false,
-            )
-            : null),
+        () => {
+            // Numerator: live usage ephemeral (Claude) or the CLI's published
+            // context_window facts (Codex publishes only these).
+            const contextSize = resolveContextSize(props.usageData?.contextSize, props.metadata?.statusLine);
+            return contextSize !== null
+                ? getContextStatus(
+                    contextSize,
+                    resolveContextBudget(props.metadata?.statusLine),
+                    props.showStatusLine ?? false,
+                )
+                : null;
+        },
         // Primitive deps: the metadata object gets a fresh identity on every
         // session metadata update, which would defeat the status-row memo.
         [
             props.usageData?.contextSize,
+            props.metadata?.statusLine?.context_window?.total_input_tokens,
             props.metadata?.statusLine?.context_window?.context_window_size,
             props.metadata?.statusLine?.auto_compact_tokens,
             props.showStatusLine,

@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { getContextStatus, resolveContextBudget } from './contextStatus';
+import { getContextStatus, resolveContextBudget, resolveContextSize } from './contextStatus';
 
 const BUDGET = 190000;
 
-function contextWindow(size: number | null) {
+function contextWindow(size: number | null, totalInput = 0) {
     return {
-        total_input_tokens: 0,
+        total_input_tokens: totalInput,
         total_output_tokens: 0,
         context_window_size: size,
         current_usage: null,
@@ -30,6 +30,25 @@ describe('resolveContextBudget', () => {
         expect(resolveContextBudget({ context_window: contextWindow(200000), auto_compact_tokens: 150000, updated_at: 1 })).toBe(150000);
         expect(resolveContextBudget({ context_window: contextWindow(200000), auto_compact_tokens: 999999999, updated_at: 1 })).toBe(200000);
         expect(resolveContextBudget({ auto_compact_tokens: 150000, updated_at: 1 })).toBe(150000);
+    });
+});
+
+describe('resolveContextSize', () => {
+    it('prefers the live usage ephemeral when present (Claude path)', () => {
+        expect(resolveContextSize(42000, { context_window: contextWindow(258400, 99999), updated_at: 1 })).toBe(42000);
+    });
+
+    it('falls back to published context_window facts when no usage ephemeral (Codex path)', () => {
+        expect(resolveContextSize(null, { context_window: contextWindow(258400, 42905), updated_at: 1 })).toBe(42905);
+        expect(resolveContextSize(undefined, { context_window: contextWindow(258400, 42905), updated_at: 1 })).toBe(42905);
+        expect(resolveContextSize(0, { context_window: contextWindow(258400, 42905), updated_at: 1 })).toBe(42905);
+    });
+
+    it('returns null when neither source reports occupancy (ring stays hidden)', () => {
+        expect(resolveContextSize(null, null)).toBeNull();
+        expect(resolveContextSize(undefined, undefined)).toBeNull();
+        expect(resolveContextSize(0, { updated_at: 1 })).toBeNull();
+        expect(resolveContextSize(null, { context_window: contextWindow(258400, 0), updated_at: 1 })).toBeNull();
     });
 });
 

@@ -37,6 +37,7 @@ import {
 } from './utils/sessionProtocolMapper';
 import { resumeExistingThread } from './resumeExistingThread';
 import { emitReadyIfIdle } from './emitReadyIfIdle';
+import { contextWindowFromCodexTokenUsage, type CodexTokenUsage } from './utils/codexContextWindow';
 import { enqueueCodexUserText, isCodexClearText } from './codexClearCommand';
 import {
     buildCodexTurnPrompt,
@@ -659,6 +660,25 @@ export async function runCodex(opts: {
         if (msg.type === 'turn_diff') {
             if ((msg as any).unified_diff) {
                 diffProcessor.processDiff((msg as any).unified_diff);
+            }
+        }
+
+        // Publish context-window facts for the webapp's status-line ring, the
+        // same slot the Claude CLI fills (statusLine.context_window). Codex's
+        // token_count carries the model window size + per-turn usage; the app
+        // owns all derived math/colour.
+        if (msg.type === 'token_count') {
+            const facts = contextWindowFromCodexTokenUsage(msg as unknown as CodexTokenUsage);
+            if (facts) {
+                session.updateMetadata((currentMetadata) => ({
+                    ...currentMetadata,
+                    statusLine: {
+                        ...(currentMetadata.statusLine ?? {}),
+                        context_window: facts,
+                        exceeds_200k_tokens: facts.total_input_tokens > 200_000,
+                        updated_at: Date.now(),
+                    },
+                }));
             }
         }
 

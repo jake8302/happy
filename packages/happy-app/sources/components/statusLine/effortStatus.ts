@@ -16,6 +16,10 @@ export const MODEL_FAMILY_COLORS: Record<string, string> = {
     opus: '#BE6248',
     sonnet: '#8C6AD6',
     haiku: '#369298',
+    // Codex / OpenAI models: gpt-5.5, gpt-5.3-codex, … both substrings map to
+    // the same OpenAI green so the gpt-*-codex ids resolve either way.
+    gpt: '#10A37F',
+    codex: '#10A37F',
 };
 
 export type EffortStatus = { level: EffortLevel; color: string | null };

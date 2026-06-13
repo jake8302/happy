@@ -28,6 +28,23 @@ export function resolveContextBudget(statusLine: Metadata['statusLine']): number
     return windowSize ?? LEGACY_DEFAULT_BUDGET;
 }
 
+/**
+ * The numerator the ring fills with: the live usage ephemeral when present
+ * (Claude streams it per request), else the CLI's published context_window
+ * facts (Codex publishes only these — no usage ephemeral). Null when neither
+ * reports occupancy, so the ring stays hidden.
+ */
+export function resolveContextSize(
+    usageContextSize: number | null | undefined,
+    statusLine: Metadata['statusLine'],
+): number | null {
+    if (typeof usageContextSize === 'number' && usageContextSize > 0) {
+        return usageContextSize;
+    }
+    const fromStatusLine = statusLine?.context_window?.total_input_tokens;
+    return typeof fromStatusLine === 'number' && fromStatusLine > 0 ? fromStatusLine : null;
+}
+
 export type ContextStatus = { fillFraction: number; color: string; percentRemaining: number };
 
 export function getContextStatus(

@@ -26,6 +26,12 @@ describe('getEffortStatus', () => {
         expect(getEffortStatus('high', 'claude-fable-5')?.color).toBe('#C75F8D');
     });
 
+    it('colours Codex / gpt models with the OpenAI family colour', () => {
+        expect(getEffortStatus('xhigh', 'gpt-5.5')?.color).toBe('#10A37F');
+        expect(getEffortStatus('xhigh', 'gpt-5.3-codex')?.color).toBe('#10A37F');
+        expect(getEffortStatus('xhigh', 'gpt-5.1-codex-max')?.color).toBe('#10A37F');
+    });
+
     it('returns a null colour for unknown or default models (caller themes it)', () => {
         expect(getEffortStatus('high', 'default')?.color).toBeNull();
         expect(getEffortStatus('high', null)?.color).toBeNull();
@@ -40,6 +46,6 @@ describe('getEffortStatus', () => {
 
     it('exports the level and colour tables the statusline scheme is ported from', () => {
         expect(EFFORT_LEVELS).toEqual(['max', 'xhigh', 'high', 'medium', 'low']);
-        expect(Object.keys(MODEL_FAMILY_COLORS)).toEqual(['fable', 'opus', 'sonnet', 'haiku']);
+        expect(Object.keys(MODEL_FAMILY_COLORS)).toEqual(['fable', 'opus', 'sonnet', 'haiku', 'gpt', 'codex']);
     });
 });
